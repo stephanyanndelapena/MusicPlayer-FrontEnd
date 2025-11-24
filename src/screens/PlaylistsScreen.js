@@ -1,80 +1,102 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, FlatList, Button, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, Image, StyleSheet, Button, Alert } from 'react-native';
 import api from '../api';
 
 export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
 
   const fetchPlaylists = async () => {
-    setLoading(true);
     try {
       const res = await api.get('/playlists/');
-      // res.data is expected to be a list
       setPlaylists(res.data);
-    } catch (err) {
-      console.warn('fetchPlaylists error', err?.response?.data || err.message || err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const submitCreate = async () => {
-    if (!name.trim()) {
-      alert('Please enter a name');
-      return;
-    }
-    setCreating(true);
-    try {
-      await api.post('/playlists/', { name: name.trim(), description });
-      setName('');
-      setDescription('');
-      await fetchPlaylists();
-    } catch (err) {
-      console.warn('create playlist error', err?.response?.data || err.message || err);
-      alert('Failed to create playlist');
-    } finally {
-      setCreating(false);
+    } catch (e) {
+      console.warn('fetchPlaylists', e);
+      Alert.alert('Error', 'Failed to load playlists');
     }
   };
 
   useEffect(() => {
     fetchPlaylists();
-    const unsubscribe = navigation.addListener('focus', fetchPlaylists);
-    return unsubscribe;
+    const unsub = navigation.addListener('focus', fetchPlaylists);
+    return () => unsub && unsub();
   }, [navigation]);
 
-  return (
-    <View style={{ flex: 1, padding: 16 }}>
-      <Text style={{ fontSize: 20, marginBottom: 8 }}>Playlists</Text>
+  const renderItem = ({ item }) => {
+    const firstTrackArtwork = item.tracks && item.tracks.length > 0 ? item.tracks[0].artwork : item.image || null;
+    const thumbSource = firstTrackArtwork ? { uri: firstTrackArtwork } : null;
 
-      <View style={{ marginBottom: 12 }}>
-        <TextInput placeholder="Playlist name" value={name} onChangeText={setName} style={{ borderWidth: 1, padding: 8, marginBottom: 8 }} />
-        <TextInput placeholder="Description" value={description} onChangeText={setDescription} style={{ borderWidth: 1, padding: 8, marginBottom: 8 }} />
-        <Button title={creating ? 'Creating...' : 'Create Playlist'} onPress={submitCreate} disabled={creating} />
+    return (
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
+          onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })}
+        >
+          {thumbSource ? (
+            <Image source={thumbSource} style={styles.thumb} />
+          ) : (
+            <View style={styles.thumbPlaceholder} />
+          )}
+
+          <View style={{ flex: 1 }}>
+            <Text style={styles.title}>{item.name}</Text>
+            <Text style={styles.count}>{(item.tracks || []).length} tracks</Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={styles.rowButtons}>
+          <View style={styles.smallButton}>
+            <Button title="Open" onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })} />
+          </View>
+        </View>
+      </View>
+    );
+  };
+
+  return (
+    <View style={{ flex: 1 }}>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerTitle}>Playlists</Text>
+
+        <View style={styles.headerButtons}>
+          <View style={styles.smallButton}>
+            <Button title="Create Playlist" onPress={() => navigation.navigate('PlaylistForm')} />
+          </View>
+
+          <View style={styles.smallButton}>
+            <Button title="Add Song" onPress={() => navigation.navigate('TrackForm')} />
+          </View>
+        </View>
       </View>
 
-      <Button title="Refresh" onPress={fetchPlaylists} />
-
-      {loading ? <Text>Loading...</Text> :
-        <FlatList
-          data={playlists}
-          keyExtractor={(item) => String(item.id)}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => navigation.navigate('PlaylistDetail', { id: item.id, name: item.name })}>
-              <View style={{ padding: 12, borderBottomWidth: 1 }}>
-                <Text style={{ fontSize: 18 }}>{item.name}</Text>
-                <Text>{item.description}</Text>
-                <Text>{item.tracks ? `${item.tracks.length} tracks` : '0 tracks'}</Text>
-              </View>
-            </TouchableOpacity>
-          )}
-          ListEmptyComponent={<Text>No playlists</Text>}
-        />
-      }
+      <FlatList
+        data={playlists}
+        keyExtractor={(p) => String(p.id)}
+        renderItem={renderItem}
+        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#eee' }} />}
+        contentContainerStyle={{ paddingBottom: 120 }}
+      />
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '600' },
+
+  headerButtons: { flexDirection: 'row', alignItems: 'center' },
+  smallButton: { marginLeft: 8 },
+
+  row: { flexDirection: 'row', padding: 12, alignItems: 'center' },
+  thumb: { width: 56, height: 56, borderRadius: 4, marginRight: 12, backgroundColor: '#333' },
+  thumbPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 4,
+    marginRight: 12,
+    backgroundColor: '#333',
+  },
+  title: { fontSize: 16 },
+  count: { color: '#666', marginTop: 4 },
+
+  rowButtons: { flexDirection: 'row', alignItems: 'center' },
+});
