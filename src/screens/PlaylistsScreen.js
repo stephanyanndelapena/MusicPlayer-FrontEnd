@@ -6,14 +6,14 @@ export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
 
   const fetchPlaylists = async () => {
-    try {
-      const res = await api.get('/playlists/');
-      setPlaylists(res.data);
-    } catch (e) {
-      console.warn('fetchPlaylists', e);
-      Alert.alert('Error', 'Failed to load playlists');
-    }
-  };
+  try {
+    const res = await api.get('playlists/'); // <-- FIXED
+    setPlaylists(res.data);
+  } catch (e) {
+    console.warn('fetchPlaylists', e);
+    Alert.alert('Error', 'Failed to load playlists');
+  }
+};
 
   useEffect(() => {
     fetchPlaylists();
@@ -64,6 +64,10 @@ export default function PlaylistsScreen({ navigation }) {
 
           <View style={styles.smallButton}>
             <Button title="Add Song" onPress={() => navigation.navigate('TrackForm')} />
+          </View>
+
+          <View style={styles.smallButton}>
+            <Button title="Most Played" onPress={() => navigation.navigate('MostPlayed')} />
           </View>
         </View>
       </View>

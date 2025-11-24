@@ -5,6 +5,9 @@ import { usePlayer } from '../context/PlayerContext';
 
 /**
  * PlaylistDetailScreen — shows small artwork thumbnail per track and allows deleting the playlist immediately.
+ *
+ * NOTE: play counts are incremented centrally inside PlayerContext.play(), so this screen
+ * no longer touches incrementPlayCount to avoid double-counting.
  */
 
 export default function PlaylistDetailScreen({ route, navigation }) {
@@ -41,27 +44,42 @@ export default function PlaylistDetailScreen({ route, navigation }) {
         return;
       }
       await play(track, { queue: playlist.tracks, index: playlist.tracks.findIndex(t => t.id === track.id) });
+      // play counts are handled in PlayerContext.play()
     } catch (e) {
       console.warn('togglePlayFor error', e);
       Alert.alert('Play error', 'Unable to play this track');
     }
   };
 
-  // Immediately delete the playlist when pressed (no confirmation)
-  const handleDeletePlaylist = async () => {
-    if (!playlist) return;
-    setDeleting(true);
-    try {
-      await api.delete(`/playlists/${id}/`);
-      Alert.alert('Deleted', `"${playlist.name}" was deleted.`);
-      navigation.navigate('Playlists');
-    } catch (err) {
-      console.error('delete playlist error', err?.response || err);
-      const msg = err?.response?.data ? JSON.stringify(err.response.data) : String(err?.message || err);
-      Alert.alert('Delete failed', msg);
-    } finally {
-      setDeleting(false);
-    }
+  const makeFullUrl = (maybePath) => {
+    if (!maybePath) return null;
+    if (maybePath.startsWith('http://') || maybePath.startsWith('https://')) return maybePath;
+    const base = (api && api.defaults && api.defaults.baseURL) ? api.defaults.baseURL.replace(/\/$/, '') : '';
+    const path = maybePath.startsWith('/') ? maybePath : `/${maybePath}`;
+    return base ? `${base}${path}` : path;
+  };
+
+  // Proper delete handler with confirmation
+  const handleDeletePlaylist = () => {
+    Alert.alert('Delete playlist', 'Are you sure you want to delete this playlist?', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Delete',
+        style: 'destructive',
+        onPress: async () => {
+          setDeleting(true);
+          try {
+            await api.delete(`/playlists/${id}/`);
+            navigation.goBack();
+          } catch (err) {
+            console.warn('deletePlaylist error', err);
+            Alert.alert('Error', 'Failed to delete playlist');
+          } finally {
+            setDeleting(false);
+          }
+        },
+      },
+    ]);
   };
 
   if (!playlist && loading) return <View style={{ padding: 16 }}><Text>Loading...</Text></View>;
@@ -97,8 +115,13 @@ export default function PlaylistDetailScreen({ route, navigation }) {
         renderItem={({ item }) => (
           <View style={styles.trackItem}>
             {item.artwork ? (
-              <Image source={{ uri: item.artwork }} style={styles.trackThumb} />
+              <Image
+                source={{ uri: makeFullUrl(item.artwork) }}
+                style={styles.trackThumb}
+                resizeMode="cover"
+              />
             ) : (
+              // transparent / minimal placeholder (removes dark "box" look)
               <View style={styles.trackThumbPlaceholder} />
             )}
 
@@ -140,9 +163,27 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, marginBottom: 4 },
   description: { marginBottom: 12, color: '#666' },
   trackItem: { padding: 12, flexDirection: 'row', alignItems: 'center' },
-  trackThumb: { width: 56, height: 56, borderRadius: 4, marginRight: 12, backgroundColor: '#333' },
-  // placeholder view when artwork isn't available (avoids requiring a local image file)
-  trackThumbPlaceholder: { width: 56, height: 56, borderRadius: 4, marginRight: 12, backgroundColor: '#333' },
+  // when artwork exists we render the Image with resizeMode cover,
+  // otherwise render a subtle empty placeholder (transparent background + light border)
+  trackThumb: {
+    width: 56,
+    height: 56,
+    borderRadius: 4,
+    marginRight: 12,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#eee',
+    overflow: 'hidden',
+  },
+  trackThumbPlaceholder: {
+    width: 56,
+    height: 56,
+    borderRadius: 4,
+    marginRight: 12,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: '#eee',
+  },
   trackText: { flex: 1 },
   trackTitle: { fontSize: 18 },
   trackArtist: { color: '#666', marginTop: 4 },

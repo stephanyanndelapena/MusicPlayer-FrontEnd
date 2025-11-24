@@ -1,242 +1,235 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
-import { Platform } from 'react-native';
 import { Audio } from 'expo-av';
+import api from '../api';
+import { incrementPlayCount } from '../utils/playCounts';
 
-const PlayerContext = createContext();
+/**
+ * PlayerContext with centralized play counting and robust URI handling.
+ * - Builds full URIs for artwork/audio when backend returns relative paths.
+ * - Tries multiple likely audio fields so it will work with common APIs.
+ */
+
+const PlayerContext = createContext(null);
 
 export function PlayerProvider({ children }) {
-  const [queue, setQueueState] = useState([]); // array of track objects
-  const [currentIndex, setCurrentIndex] = useState(-1); // index in queue
-  const [currentTrack, setCurrentTrack] = useState(null); // current track object
+  const soundRef = useRef(null);
+  const positionTimerRef = useRef(null);
+
+  const [currentTrack, setCurrentTrack] = useState(null);
+  const [queue, setQueue] = useState([]);
+  const [queueIndex, setQueueIndex] = useState(0);
+
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
-  const [durationMillis, setDurationMillis] = useState(null);
-  const [shuffle, setShuffle] = useState(false);
-
-  const webAudioRef = useRef(null);
-  const nativeSoundRef = useRef(null);
+  const [durationMillis, setDurationMillis] = useState(0);
 
   useEffect(() => {
-    // cleanup on unmount
     return () => {
-      if (Platform.OS === 'web') {
-        if (webAudioRef.current) {
-          try { webAudioRef.current.pause(); } catch (e) {}
-        }
-      } else {
-        if (nativeSoundRef.current) {
-          try { nativeSoundRef.current.unloadAsync(); } catch (e) {}
-        }
+      stopAndUnload();
+      if (positionTimerRef.current) {
+        clearInterval(positionTimerRef.current);
+        positionTimerRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // internal helper: load and play track object
-  const _loadAndPlay = async (track) => {
-    setCurrentTrack(track);
-    if (!track) {
-      setIsPlaying(false);
-      setPositionMillis(0);
-      setDurationMillis(null);
-      return;
-    }
-
-    if (Platform.OS === 'web') {
-      if (!webAudioRef.current) {
-        webAudioRef.current = new window.Audio();
-        webAudioRef.current.crossOrigin = 'anonymous';
-        webAudioRef.current.addEventListener('timeupdate', () => {
-          setPositionMillis(Math.floor(webAudioRef.current.currentTime * 1000));
-          setDurationMillis(webAudioRef.current.duration ? Math.floor(webAudioRef.current.duration * 1000) : null);
-        });
-        webAudioRef.current.addEventListener('ended', () => {
-          setIsPlaying(false);
-          setPositionMillis(0);
-        });
-      }
-      if (webAudioRef.current.src !== track.audio_file) {
-        webAudioRef.current.src = track.audio_file;
-      }
-      try {
-        await webAudioRef.current.play();
-        setIsPlaying(true);
-      } catch (e) {
-        console.warn('web play error', e);
-        setIsPlaying(false);
-      }
-    } else {
-      try {
-        if (nativeSoundRef.current) {
-          try { await nativeSoundRef.current.stopAsync(); } catch (e) {}
-          try { await nativeSoundRef.current.unloadAsync(); } catch (e) {}
-          nativeSoundRef.current = null;
-        }
-        const { sound, status } = await Audio.Sound.createAsync({ uri: track.audio_file }, { shouldPlay: true });
-        nativeSoundRef.current = sound;
-        setIsPlaying(true);
-        setDurationMillis(status.durationMillis || null);
-        sound.setOnPlaybackStatusUpdate((s) => {
-          if (!s) return;
-          setPositionMillis(s.positionMillis || 0);
-          setDurationMillis(s.durationMillis || null);
-          if (s.didJustFinish) {
-            setIsPlaying(false);
-            setPositionMillis(0);
-            // automatically play next when a track finishes
-            playNext();
-          }
-        });
-      } catch (e) {
-        console.warn('native play error', e);
-        setIsPlaying(false);
-      }
-    }
-  };
-
-  // set a new queue (array of tracks) and optional start index
-  const setQueue = async (newQueue = [], startIndex = 0) => {
-    setQueueState(newQueue || []);
-    if (!newQueue || newQueue.length === 0) {
-      setCurrentIndex(-1);
-      await _loadAndPlay(null);
-      return;
-    }
-    const index = Math.max(0, Math.min(startIndex, newQueue.length - 1));
-    setCurrentIndex(index);
-    await _loadAndPlay(newQueue[index]);
-  };
-
-  // play a specific index in the current queue (if exists)
-  const playAtIndex = async (index) => {
-    if (!queue || queue.length === 0) return;
-    const idx = Math.max(0, Math.min(index, queue.length - 1));
-    setCurrentIndex(idx);
-    await _loadAndPlay(queue[idx]);
-  };
-
-  // play a track; optional args: provide a queue and startIndex
-  const play = async (track, opts = {}) => {
-    // opts: { queue: [...], index: n }
+  const stopAndUnload = async () => {
     try {
-      if (opts.queue && Array.isArray(opts.queue) && opts.queue.length > 0) {
-        // use provided queue
-        await setQueue(opts.queue, typeof opts.index === 'number' ? opts.index : 0);
-        return;
+      if (soundRef.current) {
+        // stop then unload
+        try { await soundRef.current.stopAsync(); } catch (_) {}
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
       }
-
-      // If queue contains the track, play that index
-      const foundIndex = queue.findIndex((t) => t.id === track?.id);
-      if (foundIndex !== -1) {
-        await playAtIndex(foundIndex);
-        return;
-      }
-
-      // otherwise append track to current queue and play it
-      const newQueue = [...(queue || []), track];
-      setQueueState(newQueue);
-      const idx = newQueue.length - 1;
-      setCurrentIndex(idx);
-      await _loadAndPlay(track);
     } catch (e) {
-      console.warn('play error', e);
+      console.warn('stopAndUnload error', e);
+    }
+  };
+
+  const startPositionTimer = () => {
+    if (positionTimerRef.current) return;
+    positionTimerRef.current = setInterval(async () => {
+      try {
+        if (!soundRef.current) return;
+        const status = await soundRef.current.getStatusAsync();
+        if (!status.isLoaded) return;
+        setPositionMillis(status.positionMillis ?? 0);
+        setDurationMillis(status.durationMillis ?? 0);
+        setIsPlaying(status.isPlaying ?? false);
+      } catch (e) {
+        // non-fatal
+      }
+    }, 500);
+  };
+
+  const stopPositionTimer = () => {
+    if (positionTimerRef.current) {
+      clearInterval(positionTimerRef.current);
+      positionTimerRef.current = null;
+    }
+  };
+
+  const makeFullUrl = (maybePath) => {
+    if (!maybePath) return null;
+    if (maybePath.startsWith('http://') || maybePath.startsWith('https://')) return maybePath;
+    const base = (api && api.defaults && api.defaults.baseURL) ? api.defaults.baseURL.replace(/\/$/, '') : '';
+    // ensure leading slash
+    const path = maybePath.startsWith('/') ? maybePath : `/${maybePath}`;
+    return base ? `${base}${path}` : path;
+  };
+
+  const findAudioUri = (track) => {
+    if (!track) return null;
+    // common property names used by different backends
+    const candidates = [
+      track.url,
+      track.audio_url,
+      track.audio_file_url,
+      track.stream_url,
+      track.audio_file,
+      track.audio,
+      track.file,
+      track.file_url,
+      track.src,
+    ];
+    for (const c of candidates) {
+      if (c) return makeFullUrl(c);
+    }
+    return null;
+  };
+
+  /**
+   * Play a track.
+   * track: object (required)
+   * opts: { queue: arrayOfTracks, index: number } optional
+   */
+  const play = async (track, opts = {}) => {
+    if (!track) return;
+
+    if (Array.isArray(opts.queue)) {
+      setQueue(opts.queue);
+      if (typeof opts.index === 'number') {
+        setQueueIndex(opts.index);
+      }
+    }
+
+    try {
+      // If same track loaded, resume
+      if (currentTrack && track.id === currentTrack.id && soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          await soundRef.current.playAsync();
+          setIsPlaying(true);
+          startPositionTimer();
+          incrementPlayCount(track);
+          return;
+        }
+      }
+
+      await stopAndUnload();
+
+      const sound = new Audio.Sound();
+      soundRef.current = sound;
+
+      const uri = findAudioUri(track);
+      if (!uri) {
+        console.warn('play: no playable URL found on track', track);
+        return;
+      }
+
+      const loadedStatus = await sound.loadAsync({ uri }, { shouldPlay: true });
+      setCurrentTrack(track);
+      setIsPlaying(true);
+      setPositionMillis(0);
+      setDurationMillis(loadedStatus.durationMillis ?? 0);
+
+      // central increment
+      incrementPlayCount(track);
+
+      startPositionTimer();
+
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (!status) return;
+        setPositionMillis(status.positionMillis ?? 0);
+        setDurationMillis(status.durationMillis ?? 0);
+        setIsPlaying(status.isPlaying ?? false);
+
+        if (status.didJustFinish && !status.isLooping) {
+          playNext();
+        }
+      });
+    } catch (e) {
+      console.warn('PlayerContext.play error', e);
     }
   };
 
   const pause = async () => {
-    if (Platform.OS === 'web') {
-      if (webAudioRef.current && !webAudioRef.current.paused) {
-        try { webAudioRef.current.pause(); setIsPlaying(false); } catch (e) { console.warn(e); }
+    try {
+      if (!soundRef.current) return;
+      const status = await soundRef.current.getStatusAsync();
+      if (status.isLoaded && status.isPlaying) {
+        await soundRef.current.pauseAsync();
+        setIsPlaying(false);
       }
-    } else {
-      if (nativeSoundRef.current) {
-        try { await nativeSoundRef.current.pauseAsync(); setIsPlaying(false); } catch (e) { console.warn(e); }
-      }
+    } catch (e) {
+      console.warn('pause error', e);
     }
   };
 
-  const stop = async () => {
-    if (Platform.OS === 'web') {
-      if (webAudioRef.current) {
-        try { webAudioRef.current.pause(); webAudioRef.current.currentTime = 0; setIsPlaying(false); setPositionMillis(0); } catch (e) { console.warn(e); }
+  const seekTo = async (ms) => {
+    try {
+      if (!soundRef.current) return;
+      const status = await soundRef.current.getStatusAsync();
+      if (status.isLoaded) {
+        await soundRef.current.setPositionAsync(ms);
+        setPositionMillis(ms);
       }
-    } else {
-      if (nativeSoundRef.current) {
-        try { await nativeSoundRef.current.stopAsync(); await nativeSoundRef.current.unloadAsync(); nativeSoundRef.current = null; setIsPlaying(false); setPositionMillis(0); } catch (e) { console.warn(e); }
-      }
+    } catch (e) {
+      console.warn('seekTo error', e);
     }
   };
 
-  const seekTo = async (millis) => {
-    if (Platform.OS === 'web') {
-      if (webAudioRef.current && webAudioRef.current.duration) {
-        webAudioRef.current.currentTime = millis / 1000;
-        setPositionMillis(millis);
-      }
-    } else {
-      if (nativeSoundRef.current) {
-        try { await nativeSoundRef.current.setPositionAsync(millis); setPositionMillis(millis); } catch (e) { console.warn(e); }
-      }
-    }
-  };
-
-  // next/prev controls with shuffle support
   const playNext = async () => {
-    if (!queue || queue.length === 0) return;
-    if (shuffle && queue.length > 1) {
-      // pick a random index different from currentIndex
-      let next;
-      do {
-        next = Math.floor(Math.random() * queue.length);
-      } while (next === currentIndex && queue.length > 1);
-      setCurrentIndex(next);
-      await _loadAndPlay(queue[next]);
-      return;
+    try {
+      if (!queue || queue.length === 0) return;
+      const nextIndex = (queueIndex + 1) % queue.length;
+      const nextTrack = queue[nextIndex];
+      setQueueIndex(nextIndex);
+      await play(nextTrack, { queue, index: nextIndex });
+    } catch (e) {
+      console.warn('playNext error', e);
     }
-    // normal next
-    const nextIndex = (currentIndex + 1) % queue.length;
-    setCurrentIndex(nextIndex);
-    await _loadAndPlay(queue[nextIndex]);
   };
 
   const playPrev = async () => {
-    if (!queue || queue.length === 0) return;
-    if (shuffle && queue.length > 1) {
-      let prev;
-      do {
-        prev = Math.floor(Math.random() * queue.length);
-      } while (prev === currentIndex && queue.length > 1);
-      setCurrentIndex(prev);
-      await _loadAndPlay(queue[prev]);
-      return;
+    try {
+      if (!queue || queue.length === 0) return;
+      const prevIndex = queueIndex > 0 ? queueIndex - 1 : queue.length - 1;
+      const prevTrack = queue[prevIndex];
+      setQueueIndex(prevIndex);
+      await play(prevTrack, { queue, index: prevIndex });
+    } catch (e) {
+      console.warn('playPrev error', e);
     }
-    const prevIndex = (currentIndex - 1 + queue.length) % queue.length;
-    setCurrentIndex(prevIndex);
-    await _loadAndPlay(queue[prevIndex]);
-  };
-
-  const toggleShuffle = () => {
-    setShuffle((s) => !s);
   };
 
   return (
-    <PlayerContext.Provider value={{
-      queue,
-      currentIndex,
-      currentTrack,
-      isPlaying,
-      positionMillis,
-      durationMillis,
-      shuffle,
-      setQueue,
-      playAtIndex,
-      play,
-      pause,
-      stop,
-      seekTo,
-      playNext,
-      playPrev,
-      toggleShuffle,
-    }}>
+    <PlayerContext.Provider
+      value={{
+        currentTrack,
+        isPlaying,
+        positionMillis,
+        durationMillis,
+        play,
+        pause,
+        seekTo,
+        playNext,
+        playPrev,
+        queue,
+        queueIndex,
+      }}
+    >
       {children}
     </PlayerContext.Provider>
   );
