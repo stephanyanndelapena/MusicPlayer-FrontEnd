@@ -5,32 +5,14 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  StyleSheet,
   Button,
   Alert,
   Modal,
   ActivityIndicator,
-  Pressable,
 } from 'react-native';
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
-
-/**
- * PlaylistsScreen — fixes blinking artwork while music is playing.
- *
- * Key fixes:
- * 1) Do NOT subscribe to PlayerContext at the top-level screen (removed usePlayer() call here).
- *    Subscribing here caused the whole screen to re-render on player progress updates.
- * 2) Artwork is isolated into a memoized component that:
- *    - resolves the artwork URL with useMemo
- *    - memoizes the Image source object ({ uri }) so its identity does not change between renders
- *    - returns a placeholder view when no artwork exists
- * 3) TrackItem is memoized and renders Artwork as a child. TrackItem consumes PlayerContext
- *    so it can update Play/Pause state, but because Artwork's props don't change, the Image won't reload.
- *
- * With these changes the artwork image will not be recreated or given a new source object when the
- * player updates position; that removes the blinking you saw while music is playing.
- */
+import styles, { colors } from './PlaylistsScreen.styles';
 
 /* resolveArtworkUrl unchanged */
 function resolveArtworkUrl(artwork) {
@@ -46,10 +28,7 @@ function resolveArtworkUrl(artwork) {
 
 /* Memoized Artwork component */
 const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderStyle }) {
-  // compute uri only when artwork string changes
   const uri = useMemo(() => (artwork ? resolveArtworkUrl(artwork) : null), [artwork]);
-
-  // memoize the source object so Image receives the same object identity across renders
   const source = useMemo(() => (uri ? { uri } : null), [uri]);
 
   if (!source) {
@@ -59,49 +38,51 @@ const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderSt
   return <Image source={source} style={imageStyle || styles.trackThumb} />;
 });
 
-/* TrackItem consumes player context (so its play/pause state updates) but Artwork is insulated */
 const TrackItem = React.memo(function TrackItem({ item, onAddToPlaylist, queue, index }) {
-  const { currentTrack, isPlaying, play, pause } = usePlayer();
-
+  const { currentTrack, isPlaying, play } = usePlayer();
   const isCurrent = currentTrack && currentTrack.id === item.id && isPlaying;
 
   const handlePlay = useCallback(async () => {
     try {
-      if (isCurrent) {
-        await pause();
-        return;
-      }
       await play(item, { queue, index });
     } catch (err) {
       console.warn('play error', err);
       Alert.alert('Play error', 'Unable to play this song');
     }
-  }, [isCurrent, item, play, pause, queue, index]);
+  }, [item, play, queue, index]);
 
   return (
-    <View style={styles.trackRow}>
+    <TouchableOpacity
+      style={[styles.trackRow, isCurrent ? styles.trackRowActive : null]}
+      onPress={handlePlay}
+      activeOpacity={0.7}
+      accessibilityLabel={`Play ${item.title} by ${item.artist}`}
+    >
       <Artwork artwork={item.artwork} imageStyle={styles.trackThumb} placeholderStyle={styles.trackThumbPlaceholder} />
 
       <View style={{ flex: 1 }}>
-        <Text style={styles.trackTitle}>{item.title}</Text>
-        <Text style={styles.trackArtist}>{item.artist}</Text>
+        <Text style={styles.trackTitle} numberOfLines={1}>
+          {item.title}
+        </Text>
+        <Text style={styles.trackArtist} numberOfLines={1}>
+          {item.artist}
+        </Text>
       </View>
 
       <View style={styles.recentButtons}>
-        <View style={{ marginRight: 8 }}>
-          <Button title={isCurrent ? 'Pause' : 'Play'} onPress={handlePlay} />
-        </View>
-
-        <View>
-          <Button title="+" onPress={() => onAddToPlaylist(item)} />
-        </View>
+        <TouchableOpacity
+          onPress={() => onAddToPlaylist(item)}
+          style={styles.addButton}
+          accessibilityLabel="Add to playlist"
+        >
+          <Text style={styles.addIcon}>＋</Text>
+        </TouchableOpacity>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 }, (prev, next) => {
   const a = prev.item;
   const b = next.item;
-  // Only re-render when relevant item fields change
   return a.id === b.id && a.artwork === b.artwork && a.title === b.title && a.artist === b.artist;
 });
 
@@ -109,15 +90,23 @@ export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  // modal and selected track state for "Add to playlist"
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
   const [selectedTrackToAdd, setSelectedTrackToAdd] = useState(null);
 
-  // IMPORTANT: do not call usePlayer() here — keeping the screen subscribed to player context
-  // causes the entire screen to re-render on playback progress updates which can trigger image reloads.
-  // TrackItem uses usePlayer() itself.
+  // Set header to match body and remove bottom border / shadow
+  useEffect(() => {
+    navigation.setOptions({
+      headerStyle: {
+        backgroundColor: colors.background || '#121212',
+        borderBottomWidth: 0,
+        elevation: 0, // Android
+        shadowOpacity: 0, // iOS
+      },
+      headerTintColor: colors.textPrimary || '#fff',
+      headerTitleStyle: { color: colors.textPrimary || '#fff' },
+    });
+  }, [navigation]);
 
   const fetchPlaylists = async () => {
     try {
@@ -135,7 +124,6 @@ export default function PlaylistsScreen({ navigation }) {
       setTracks(res.data || []);
     } catch (e) {
       console.warn('fetchTracks', e);
-      // non-fatal
     }
   };
 
@@ -161,46 +149,37 @@ export default function PlaylistsScreen({ navigation }) {
         <TouchableOpacity
           style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
           onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })}
+          activeOpacity={0.8}
         >
-          {thumbSource ? (
-            <Image source={thumbSource} style={styles.thumb} />
-          ) : (
-            <View style={styles.thumbPlaceholder} />
-          )}
+          {thumbSource ? <Image source={thumbSource} style={styles.thumb} /> : <View style={styles.thumbPlaceholder} />}
 
           <View style={{ flex: 1 }}>
-            <Text style={styles.title}>{item.name}</Text>
+            <Text style={styles.title} numberOfLines={1}>
+              {item.name}
+            </Text>
             <Text style={styles.count}>{(item.tracks || []).length} tracks</Text>
           </View>
         </TouchableOpacity>
-
-        <View style={styles.rowButtons}>
-          <View style={styles.smallButton}>
-            <Button title="Open" onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })} />
-          </View>
-        </View>
       </View>
     );
   };
 
-  // open modal to choose playlist for this track
-  const openAddToPlaylistModal = useCallback(async (track) => {
-    setSelectedTrackToAdd(track);
-    // ensure playlists are loaded for the modal
-    if (playlists.length === 0) {
-      setPlaylistsLoading(true);
-      try {
-        await fetchPlaylists();
-      } catch (e) {
-        // handled in fetchPlaylists
-      } finally {
-        setPlaylistsLoading(false);
+  const openAddToPlaylistModal = useCallback(
+    async (track) => {
+      setSelectedTrackToAdd(track);
+      if (playlists.length === 0) {
+        setPlaylistsLoading(true);
+        try {
+          await fetchPlaylists();
+        } finally {
+          setPlaylistsLoading(false);
+        }
       }
-    }
-    setPlaylistModalVisible(true);
-  }, [playlists.length]);
+      setPlaylistModalVisible(true);
+    },
+    [playlists.length]
+  );
 
-  // attach track to playlist (append to track_ids)
   const attachTrackToPlaylist = async (playlist) => {
     if (!selectedTrackToAdd) return;
     try {
@@ -236,36 +215,32 @@ export default function PlaylistsScreen({ navigation }) {
       </View>
 
       {tracks.length === 0 ? (
-        <Text style={{ color: '#666', paddingHorizontal: 12, paddingTop: 6 }}>
-          No songs yet. Use "Add Song" (header) to upload music.
-        </Text>
+        <Text style={styles.emptyText}>No songs yet. Use "Add Song" (header) to upload music.</Text>
       ) : (
-        <FlatList
-          data={tracks}
-          keyExtractor={(t) => String(t.id)}
-          renderItem={renderTrackItem}
-          ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#eee' }} />}
-        />
+        <FlatList data={tracks} keyExtractor={(t) => String(t.id)} renderItem={renderTrackItem} ItemSeparatorComponent={() => <View style={styles.separator} />} />
       )}
     </View>
   );
 
   return (
-    <View style={{ flex: 1 }}>
+    <View style={styles.container}>
       <View style={styles.headerRow}>
-        <Text style={styles.headerTitle}>Playlists</Text>
+        <View>
+          <Text style={styles.headerTitle}>Your Library</Text>
+          <Text style={styles.headerSubtitle}>Playlists</Text>
+        </View>
 
         <View style={styles.headerButtons}>
           <View style={styles.smallButton}>
-            <Button title="Create Playlist" onPress={() => navigation.navigate('PlaylistForm')} />
+            <Button title="Create" onPress={() => navigation.navigate('PlaylistForm')} color={colors.accent} />
           </View>
 
           <View style={styles.smallButton}>
-            <Button title="Add Song" onPress={() => navigation.navigate('TrackForm')} />
+            <Button title="Add Song" onPress={() => navigation.navigate('TrackForm')} color={colors.accent} />
           </View>
 
           <View style={styles.smallButton}>
-            <Button title="Most Played" onPress={() => navigation.navigate('MostPlayed')} />
+            <Button title="Most Played" onPress={() => navigation.navigate('MostPlayed')} color={colors.accent} />
           </View>
         </View>
       </View>
@@ -274,9 +249,9 @@ export default function PlaylistsScreen({ navigation }) {
         data={playlists}
         keyExtractor={(p) => String(p.id)}
         renderItem={renderPlaylistItem}
-        ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#eee' }} />}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListFooterComponent={<TracksFooter />}
-        contentContainerStyle={{ paddingBottom: 120 }}
+        contentContainerStyle={styles.listContent}
         refreshing={loading}
         onRefresh={() => {
           setLoading(true);
@@ -284,40 +259,30 @@ export default function PlaylistsScreen({ navigation }) {
         }}
       />
 
-      {/* Add to Playlist Modal */}
-      <Modal
-        visible={playlistModalVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => {
-          setPlaylistModalVisible(false);
-          setSelectedTrackToAdd(null);
-        }}
-      >
+      <Modal visible={playlistModalVisible} animationType="slide" transparent={true} onRequestClose={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Add "{selectedTrackToAdd?.title}" to playlist</Text>
 
             {playlistsLoading ? (
-              <ActivityIndicator size="small" />
+              <ActivityIndicator size="small" color={colors.accent} />
             ) : (
               <FlatList
                 data={playlists}
                 keyExtractor={(p) => String(p.id)}
                 renderItem={({ item }) => (
-                  <TouchableOpacity
-                    style={styles.playlistOption}
-                    onPress={() => attachTrackToPlaylist(item)}
-                  >
-                    <Text style={styles.playlistOptionText}>{item.name} ({(item.tracks || []).length})</Text>
+                  <TouchableOpacity style={styles.playlistOption} onPress={() => attachTrackToPlaylist(item)} activeOpacity={0.7}>
+                    <Text style={styles.playlistOptionText}>
+                      {item.name} <Text style={styles.playlistOptionCount}>({(item.tracks || []).length})</Text>
+                    </Text>
                   </TouchableOpacity>
                 )}
-                ItemSeparatorComponent={() => <View style={{ height: 1, backgroundColor: '#eee' }} />}
+                ItemSeparatorComponent={() => <View style={styles.separator} />}
               />
             )}
 
             <View style={{ marginTop: 12 }}>
-              <Button title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} />
+              <Button title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} color={colors.accent} />
             </View>
           </View>
         </View>
@@ -325,44 +290,3 @@ export default function PlaylistsScreen({ navigation }) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 12 },
-  headerTitle: { fontSize: 20, fontWeight: '600' },
-
-  headerButtons: { flexDirection: 'row', alignItems: 'center' },
-  smallButton: { marginLeft: 8 },
-
-  row: { flexDirection: 'row', padding: 12, alignItems: 'center' },
-  thumb: { width: 56, height: 56, borderRadius: 4, marginRight: 12, backgroundColor: '#333' },
-  thumbPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 4,
-    marginRight: 12,
-    backgroundColor: '#333',
-  },
-  title: { fontSize: 16 },
-  count: { color: '#666', marginTop: 4 },
-
-  rowButtons: { flexDirection: 'row', alignItems: 'center' },
-
-  // track styles
-  trackRow: { flexDirection: 'row', padding: 12, alignItems: 'center' },
-  trackThumb: { width: 48, height: 48, borderRadius: 4, marginRight: 12, backgroundColor: '#333' },
-  trackThumbPlaceholder: { width: 48, height: 48, borderRadius: 4, marginRight: 12, backgroundColor: '#333' },
-  trackTitle: { fontSize: 15 },
-  trackArtist: { color: '#666', marginTop: 4 },
-
-  recentButtons: { flexDirection: 'row', alignItems: 'center' },
-
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, marginBottom: 8 },
-  sectionTitle: { fontSize: 18, fontWeight: '600' },
-
-  // modal
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: '#fff', padding: 16, maxHeight: '60%', borderTopLeftRadius: 8, borderTopRightRadius: 8 },
-  modalTitle: { fontSize: 16, fontWeight: '600', marginBottom: 12 },
-  playlistOption: { paddingVertical: 12, paddingHorizontal: 8 },
-  playlistOptionText: { fontSize: 15 },
-});

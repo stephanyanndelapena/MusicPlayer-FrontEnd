@@ -1,8 +1,9 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Image, Pressable, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, Image, Pressable, TouchableOpacity } from 'react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { incrementPlayCount } from '../utils/playCounts';
 import makeFullUrl from '../utils/makeFullUrl';
+import styles, { colors } from './NowPlayingScreen.styles';
 
 export default function NowPlayingScreen({ navigation }) {
   const {
@@ -19,35 +20,32 @@ export default function NowPlayingScreen({ navigation }) {
 
   const [layout, setLayout] = useState(null);
 
-  // Add header back arrow
+  // Make header same color as body and remove bottom border/shadow (no white line)
   useEffect(() => {
     navigation.setOptions({
-      headerLeft: () => (
-        <TouchableOpacity
-          onPress={() => navigation.goBack()}
-          style={styles.headerBackButton}
-        >
-          <Text style={styles.headerBackText}>{'←'}</Text>
-        </TouchableOpacity>
-      ),
+      headerStyle: {
+        backgroundColor: colors.background || '#121212',
+        borderBottomWidth: 0,
+        elevation: 0, // Android: remove shadow
+        shadowOpacity: 0, // iOS: remove shadow
+      },
+      headerTintColor: colors.textPrimary || '#fff',
+      headerTitleStyle: { color: colors.textPrimary || '#fff' },
+      // do not override headerLeft so native back button is used and tinted correctly
     });
   }, [navigation]);
 
-  // If no track playing
-  if (!currentTrack)
+  if (!currentTrack) {
     return (
       <View style={styles.container}>
-        <Text style={{ color: '#fff' }}>No track playing</Text>
+        <Text style={styles.emptyText}>No track playing</Text>
       </View>
     );
+  }
 
-  // FIXED: correct artwork URL building
   const artUri = currentTrack?.artwork ? makeFullUrl(currentTrack.artwork) : null;
 
-  // FIXED: progress calculation
-  const progress = durationMillis
-    ? (positionMillis / durationMillis) * 100
-    : 0;
+  const progress = durationMillis ? (positionMillis / durationMillis) * 100 : 0;
 
   const format = (ms) => {
     if (!ms && ms !== 0) return '0:00';
@@ -76,13 +74,12 @@ export default function NowPlayingScreen({ navigation }) {
     }
     try {
       await play(currentTrack);
-      incrementPlayCount(currentTrack); // track stats
+      incrementPlayCount(currentTrack);
     } catch (e) {
       console.warn('play error', e);
     }
   };
 
-  
   return (
     <View style={styles.container}>
       {artUri ? (
@@ -91,12 +88,16 @@ export default function NowPlayingScreen({ navigation }) {
         <View style={styles.artPlaceholder} />
       )}
 
-      <Text style={styles.title}>{currentTrack.title}</Text>
-      <Text style={styles.artist}>{currentTrack.artist}</Text>
+      <Text style={styles.title} numberOfLines={2}>
+        {currentTrack.title}
+      </Text>
+      <Text style={styles.artist} numberOfLines={1}>
+        {currentTrack.artist}
+      </Text>
 
-      <Pressable style={styles.progressWrap} onLayout={onProgressLayout} onPress={onProgressPress}>
+      <Pressable style={styles.progressWrap} onLayout={onProgressLayout} onPress={onProgressPress} accessibilityLabel="Seek bar">
         <View style={styles.progressBackground}>
-          <View style={[styles.progressFill, { width: `${progress}%` }]} />
+          <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, progress))}%` }]} />
         </View>
       </Pressable>
 
@@ -106,71 +107,18 @@ export default function NowPlayingScreen({ navigation }) {
       </View>
 
       <View style={styles.controlsRow}>
-        <TouchableOpacity onPress={playPrev} style={styles.transportButton}>
+        <TouchableOpacity onPress={playPrev} style={styles.transportButton} accessibilityLabel="Previous track">
           <Text style={styles.transportIcon}>⏮</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handlePlayToggle} style={styles.playBigButton}>
+        <TouchableOpacity onPress={handlePlayToggle} style={styles.playBigButton} accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
           <Text style={styles.playBigIcon}>{isPlaying ? '⏸' : '▶'}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={playNext} style={styles.transportButton}>
+        <TouchableOpacity onPress={playNext} style={styles.transportButton} accessibilityLabel="Next track">
           <Text style={styles.transportIcon}>⏭</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, alignItems: 'center', backgroundColor: '#000' },
-
-  art: {
-    width: 320,
-    height: 320,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  artPlaceholder: {
-    width: 320,
-    height: 320,
-    borderRadius: 8,
-    backgroundColor: '#222',
-    marginTop: 20,
-  },
-
-  title: { marginTop: 18, color: '#fff', fontSize: 22, fontWeight: '700', textAlign: 'center' },
-  artist: { marginTop: 6, color: '#ccc', fontSize: 14, textAlign: 'center' },
-
-  progressWrap: { width: '100%', paddingHorizontal: 8, marginTop: 24 },
-  progressBackground: { height: 6, width: '100%', backgroundColor: '#333', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: 6, backgroundColor: '#fff' },
-
-  timeRow: { width: '100%', paddingHorizontal: 6, marginTop: 6, flexDirection: 'row', justifyContent: 'space-between' },
-  timeText: { color: '#bbb', fontSize: 12 },
-
-  controlsRow: {
-    width: '100%',
-    marginTop: 20,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-
-  transportButton: { padding: 12, alignItems: 'center', justifyContent: 'center' },
-  transportIcon: { color: '#fff', fontSize: 22 },
-
-  playBigButton: {
-    backgroundColor: '#fff',
-    borderRadius: 40,
-    width: 72,
-    height: 72,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginHorizontal: 12,
-  },
-  playBigIcon: { fontSize: 28, color: '#000', fontWeight: '700' },
-
-  headerBackButton: { paddingHorizontal: 16, paddingVertical: 6 },
-  headerBackText: { color: '#000', fontSize: 20, fontWeight: '600' },
-});
