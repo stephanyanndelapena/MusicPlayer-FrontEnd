@@ -16,6 +16,10 @@ export default function NowPlayingScreen({ navigation }) {
     seekTo,
     playNext,
     playPrev,
+    isShuffled,
+    toggleShuffle,
+    isRepeating,
+    toggleRepeat,
   } = usePlayer();
 
   const [layout, setLayout] = useState(null);
@@ -108,6 +112,18 @@ export default function NowPlayingScreen({ navigation }) {
       </View>
 
       <View style={styles.controlsRow}>
+        {/* Shuffle button */}
+        <TouchableOpacity onPress={toggleShuffle} style={styles.transportButton} accessibilityLabel="Toggle shuffle">
+          <Text
+            style={[
+              styles.transportIcon,
+              { color: isShuffled ? (colors.textPrimary || '#fff') : (colors.textSecondary || '#9e9e9e') },
+            ]}
+          >
+            {isShuffled ? '🔀' : '🔁'}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity onPress={playPrev} style={styles.transportButton} accessibilityLabel="Previous track">
           <Text style={styles.transportIcon}>⏮</Text>
         </TouchableOpacity>
@@ -118,6 +134,18 @@ export default function NowPlayingScreen({ navigation }) {
 
         <TouchableOpacity onPress={playNext} style={styles.transportButton} accessibilityLabel="Next track">
           <Text style={styles.transportIcon}>⏭</Text>
+        </TouchableOpacity>
+
+        {/* Repeat (single-track) button - same style as prev/next */}
+        <TouchableOpacity onPress={toggleRepeat} style={styles.transportButton} accessibilityLabel="Toggle repeat">
+          <Text
+            style={[
+              styles.transportIcon,
+              { color: isRepeating ? (colors.textPrimary || '#fff') : (colors.textSecondary || '#9e9e9e') },
+            ]}
+          >
+            {isRepeating ? '🔂' : '🔁'}
+          </Text>
         </TouchableOpacity>
       </View>
     </View>

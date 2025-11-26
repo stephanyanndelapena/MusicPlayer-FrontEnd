@@ -18,6 +18,8 @@ export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
+  const [originalQueue, setOriginalQueue] = useState([]); // Store original order
+  const [isShuffled, setIsShuffled] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
@@ -99,6 +101,149 @@ export function PlayerProvider({ children }) {
     return null;
   };
 
+  // Enhanced shuffle array using Fisher-Yates with crypto randomization
+  const shuffleArray = (array) => {
+    if (!array || array.length <= 1) return [...array];
+
+    const shuffled = [...array];
+
+    // Use crypto.getRandomValues for better randomness if available
+    const getRandomInt = (max) => {
+      if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+        const randomArray = new Uint32Array(1);
+        crypto.getRandomValues(randomArray);
+        return randomArray[0] % max;
+      }
+      return Math.floor(Math.random() * max);
+    };
+
+    // Fisher-Yates shuffle with enhanced randomization
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = getRandomInt(i + 1);
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+
+    return shuffled;
+  };
+
+  // Helper function to check if two arrays are equal (for shuffle validation)
+  const arraysEqual = (a, b) => {
+    if (!a || !b) return false;
+    if (a.length !== b.length) return false;
+    return a.every((val, index) => {
+      const other = b[index];
+      // Compare by id when available, otherwise by strict equality reference
+      if (val && other && val.id !== undefined && other.id !== undefined) {
+        return val.id === other.id;
+      }
+      return val === other;
+    });
+  };
+
+  // Enhanced shuffle mode with better queue management
+  const toggleShuffle = () => {
+    if (!queue || queue.length === 0) return;
+
+    console.log('Toggling shuffle:', { isShuffled, queueLength: queue.length });
+
+    if (isShuffled) {
+      // Turn off shuffle - restore original order
+      if (originalQueue && originalQueue.length > 0) {
+        // Restore a copy to avoid reference sharing
+        const restored = [...originalQueue];
+
+        // Find current track in original queue
+        let currentIndexInOriginal = -1;
+        if (currentTrack) {
+          currentIndexInOriginal = restored.findIndex(t => {
+            if (t && currentTrack && t.id !== undefined && currentTrack.id !== undefined) {
+              return t.id === currentTrack.id;
+            }
+            return t === currentTrack;
+          });
+        }
+
+        // If we found the current track in the original order, set queueIndex to that index
+        // so that the next call to playNext() will play the original-next (index + 1).
+        if (currentIndexInOriginal !== -1) {
+          setQueue(restored);
+          setQueueIndex(currentIndexInOriginal);
+        } else {
+          // Fallback: try to map the next item from the shuffled queue into the original queue
+          const nextInShuffled = queue.length > 0 ? queue[(queueIndex + 1) % queue.length] : null;
+          if (nextInShuffled) {
+            const nextIndexInOriginal = restored.findIndex(t => {
+              if (t && nextInShuffled && t.id !== undefined && nextInShuffled.id !== undefined) {
+                return t.id === nextInShuffled.id;
+              }
+              return t === nextInShuffled;
+            });
+            if (nextIndexInOriginal !== -1) {
+              // set queueIndex so that playNext() will advance to nextIndexInOriginal
+              const newIndex = (nextIndexInOriginal - 1 + restored.length) % restored.length;
+              setQueue(restored);
+              setQueueIndex(newIndex);
+            } else {
+              // completely fallback: restore and place current at index 0
+              setQueue(restored);
+              setQueueIndex(0);
+            }
+          } else {
+            setQueue(restored);
+            setQueueIndex(0);
+          }
+        }
+      }
+
+      // Clear the saved original queue since we're back to normal order
+      setOriginalQueue([]);
+      setIsShuffled(false);
+      console.log('Shuffle OFF - restored original order');
+    } else {
+      // Turn on shuffle - always snapshot the current queue as the original
+      setOriginalQueue([...queue]); // create a copy to preserve original order
+
+      const currentTrackId = currentTrack?.id;
+      let shuffledQueue = shuffleArray(queue);
+
+      // Ensure we don't get the same order (try up to 3 times for small arrays)
+      let attempts = 0;
+      const maxAttempts = queue.length > 3 ? 1 : 3;
+
+      while (attempts < maxAttempts && arraysEqual(shuffledQueue, queue)) {
+        shuffledQueue = shuffleArray(queue);
+        attempts++;
+      }
+
+      // Handle current track positioning
+      if (currentTrackId || currentTrack) {
+        const currentTrackIndex = shuffledQueue.findIndex(track => {
+          if (track && currentTrack && track.id !== undefined && currentTrack.id !== undefined) {
+            return track.id === currentTrack.id;
+          }
+          return track === currentTrack;
+        });
+
+        if (currentTrackIndex !== -1 && currentTrackIndex !== queueIndex) {
+          // Move current track to maintain its position in the queue
+          const current = shuffledQueue[currentTrackIndex];
+          shuffledQueue.splice(currentTrackIndex, 1);
+
+          // Insert at current queue index, but ensure it doesn't exceed array bounds
+          const insertIndex = Math.min(queueIndex, shuffledQueue.length);
+          shuffledQueue.splice(insertIndex, 0, current);
+
+          // Update queue index to where we inserted the current track
+          setQueueIndex(insertIndex);
+        }
+      }
+
+      setQueue(shuffledQueue);
+      setIsShuffled(true);
+      console.log('Shuffle ON - new shuffled order');
+    }
+  };
+
   /**
    * Play a track.
    * track: object (required)
@@ -108,7 +253,15 @@ export function PlayerProvider({ children }) {
     if (!track) return;
 
     if (Array.isArray(opts.queue)) {
+      // Always store a copy of the provided queue to avoid external mutation issues.
       setQueue(opts.queue);
+
+      // Only snapshot originalQueue when NOT in shuffled mode.
+      // This avoids playNext/playPrev during shuffle from overwriting originalQueue.
+      if (!isShuffled) {
+        setOriginalQueue([...opts.queue]); // Store original order (copy)
+      }
+
       if (typeof opts.index === 'number') {
         setQueueIndex(opts.index);
       }
@@ -228,6 +381,8 @@ export function PlayerProvider({ children }) {
         playPrev,
         queue,
         queueIndex,
+        isShuffled,
+        toggleShuffle,
       }}
     >
       {children}

@@ -14,6 +14,8 @@ export default function NowPlayingModal() {
     durationMillis,
     playPrev,
     playNext,
+    isShuffled,
+    toggleShuffle,
   } = usePlayer();
 
   if (!currentTrack) return null;
@@ -35,32 +37,57 @@ export default function NowPlayingModal() {
     <TouchableOpacity
       style={styles.container}
       activeOpacity={0.95}
-      onPress={() => navigation.navigate('NowPlaying')}
+      onPress={() => navigation.navigate("NowPlaying")}
     >
       <View style={styles.row}>
         <View style={styles.left}>
           {currentTrack?.artwork ? (
-            <Image source={{ uri: currentTrack.artwork }} style={styles.thumb} />
+            <Image
+              source={{ uri: currentTrack.artwork }}
+              style={styles.thumb}
+            />
           ) : (
             <View style={styles.thumbPlaceholder} />
           )}
         </View>
 
         <View style={styles.meta}>
-          <Text style={styles.title} numberOfLines={1}>{currentTrack.title}</Text>
-          <Text style={styles.artist} numberOfLines={1}>{currentTrack.artist}</Text>
+          <Text style={styles.title} numberOfLines={1}>
+            {currentTrack.title}
+          </Text>
+          <Text style={styles.artist} numberOfLines={1}>
+            {currentTrack.artist}
+          </Text>
         </View>
 
         <View style={styles.controls}>
-          <TouchableOpacity onPress={() => playPrev()} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => toggleShuffle()}
+            style={styles.iconButton}
+          >
+            <Text style={[styles.icon, isShuffled && styles.iconActive]}>
+              {isShuffled ? "🔀" : "🔁"}
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => playPrev()}
+            style={styles.iconButton}
+          >
             <Text style={styles.icon}>⏮</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => isPlaying ? pause() : play(currentTrack)} style={styles.playButton}>
-            <Text style={styles.playIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+          <TouchableOpacity
+            onPress={() => (isPlaying ? pause() : play(currentTrack))}
+            style={styles.playButton}
+          >
+            <Text style={styles.playIcon}>{isPlaying ? "⏸" : "▶"}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity onPress={() => playNext()} style={styles.iconButton}>
+          <TouchableOpacity
+            onPress={() => playNext()}
+            style={styles.iconButton}
+          >
             <Text style={styles.icon}>⏭</Text>
           </TouchableOpacity>
         </View>
@@ -69,7 +96,16 @@ export default function NowPlayingModal() {
       <View style={styles.progressRow}>
         <Text style={styles.timeText}>{format(positionMillis)}</Text>
         <View style={styles.progressBackground}>
-          <View style={[styles.progressFill, { width: durationMillis ? `${(positionMillis / durationMillis) * 100}%` : '0%' }]} />
+          <View
+            style={[
+              styles.progressFill,
+              {
+                width: durationMillis
+                  ? `${(positionMillis / durationMillis) * 100}%`
+                  : "0%",
+              },
+            ]}
+          />
         </View>
         <Text style={styles.timeTextRight}>{format(durationMillis)}</Text>
       </View>
@@ -141,6 +177,9 @@ const styles = StyleSheet.create({
   icon: {
     color: '#d6d6d6',
     fontSize: 16,
+  },
+  iconActive: {
+    color: '#fff',
   },
 
   playButton: {
