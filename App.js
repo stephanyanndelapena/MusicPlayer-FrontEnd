@@ -19,7 +19,7 @@ export default function App() {
     <PlayerProvider>
       <NavigationContainer>
         
-        <Stack.Navigator initialRouteName="Stopify">
+        <Stack.Navigator initialRouteName="Stopify - The Spotify Dupe">
           <Stack.Screen name="Stopify - The Spotify Dupe" component={PlaylistsScreen} />
           <Stack.Screen name="PlaylistDetail" component={PlaylistDetailScreen} />
           <Stack.Screen name="TrackForm" component={TrackFormScreen} />
