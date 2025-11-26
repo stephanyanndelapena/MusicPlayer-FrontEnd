@@ -8,7 +8,7 @@ import {
   Image,
   KeyboardAvoidingView,
   ScrollView,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import api from '../api';
 import styles, { colors } from './TrackFormScreen.styles';
@@ -25,6 +25,9 @@ export default function TrackFormScreen({ route, navigation }) {
   const webAudioRef = useRef(null);
   const webArtworkRef = useRef(null);
   const [saving, setSaving] = useState(false);
+  const [pickAudioHovered, setPickAudioHovered] = useState(false);
+  const [pickArtworkHovered, setPickArtworkHovered] = useState(false);
+  const [saveHovered, setSaveHovered] = useState(false);
 
   useEffect(() => {
     setTitle(track?.title || '');
@@ -37,6 +40,7 @@ export default function TrackFormScreen({ route, navigation }) {
   // Make header match the screen body and remove the default bottom line/shadow
   useEffect(() => {
     navigation.setOptions({
+      title: 'Add a Song',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
@@ -47,7 +51,7 @@ export default function TrackFormScreen({ route, navigation }) {
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
     });
   }, [navigation]);
-
+  
   useEffect(() => {
     return () => {
       if (previewUrl && typeof previewUrl === 'string' && previewUrl.startsWith('blob:')) {
@@ -192,37 +196,69 @@ export default function TrackFormScreen({ route, navigation }) {
           <View style={{ height: 12 }} />
         )}
 
-        <TouchableOpacity style={styles.pickButton} onPress={pickAudio} activeOpacity={0.8}>
+        <Pressable
+          onPress={pickAudio}
+          onHoverIn={() => setPickAudioHovered(true)}
+          onHoverOut={() => setPickAudioHovered(false)}
+          onPressIn={() => setPickAudioHovered(true)}
+          onPressOut={() => setPickAudioHovered(false)}
+          style={({ pressed }) => [
+            styles.pickButton,
+            (pickAudioHovered || pressed) ? styles.pickButtonHover : null,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Pick audio file"
+        >
           <Text style={styles.pickButtonText}>
-            {audioFile ? `Selected: ${audioFile.name}` : 'Pick Audio File'}
+            {audioFile ? `Selected: ${audioFile.name}` : 'Upload Audio File'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {Platform.OS === 'web' && (
           <input ref={webAudioRef} type="file" accept="audio/*" style={{ display: 'none' }} onChange={onWebAudioChange} />
         )}
 
         <View style={{ height: 12 }} />
 
-        <TouchableOpacity style={styles.pickButton} onPress={pickArtwork} activeOpacity={0.8}>
+        <Pressable
+          onPress={pickArtwork}
+          onHoverIn={() => setPickArtworkHovered(true)}
+          onHoverOut={() => setPickArtworkHovered(false)}
+          onPressIn={() => setPickArtworkHovered(true)}
+          onPressOut={() => setPickArtworkHovered(false)}
+          style={({ pressed }) => [
+            styles.pickButton,
+            (pickArtworkHovered || pressed) ? styles.pickButtonHover : null,
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Pick artwork"
+        >
           <Text style={styles.pickButtonText}>
-            {artwork ? `Selected artwork: ${artwork.name}` : 'Pick Cover Image (optional)'}
+            {artwork ? `Selected artwork: ${artwork.name}` : 'Upload Cover Image'}
           </Text>
-        </TouchableOpacity>
+        </Pressable>
         {Platform.OS === 'web' && (
           <input ref={webArtworkRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={onWebArtworkChange} />
         )}
 
         <View style={{ height: 12 }} />
 
-        <TouchableOpacity
-          style={[styles.saveButton, saving ? styles.saveButtonDisabled : null]}
+        <Pressable
           onPress={submit}
-          activeOpacity={0.85}
           disabled={saving}
+          onHoverIn={() => setSaveHovered(true)}
+          onHoverOut={() => setSaveHovered(false)}
+          onPressIn={() => setSaveHovered(true)}
+          onPressOut={() => setSaveHovered(false)}
+          style={({ pressed }) => [
+            styles.saveButton,
+            saving ? styles.saveButtonDisabled : null,
+            (saveHovered || pressed) && !saving ? styles.saveButtonHover : null,
+          ]}
+          accessibilityRole="button"
           accessibilityLabel="Save track"
         >
           <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
-        </TouchableOpacity>
+        </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
   );

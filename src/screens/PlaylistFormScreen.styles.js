@@ -54,6 +54,7 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
 
+  /* Primary (Save) button - filled by default */
   button: {
     backgroundColor: colors.accent,
     paddingVertical: 12,
@@ -62,6 +63,11 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 120,
+  },
+
+  /* Hover/darker state for primary button */
+  buttonHover: {
+    backgroundColor: '#18a84a', // slightly darker/more saturated green on hover/press
   },
 
   buttonDisabled: {
@@ -74,6 +80,16 @@ export default StyleSheet.create({
     fontSize: 15,
   },
 
+  /* Optional text tweaks when filled and hovered (keeps white) */
+  buttonTextHover: {
+    color: colors.textPrimary,
+  },
+
+  buttonTextDisabled: {
+    color: colors.textPrimary,
+  },
+
+  /* Cancel button - outlined by default */
   cancelButton: {
     marginLeft: 12,
     paddingVertical: 12,
@@ -84,11 +100,22 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: 90,
+    backgroundColor: 'transparent',
+  },
+
+  /* When hovered/pressed, fill the cancel button with danger (red) and invert text */
+  cancelButtonHover: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
   },
 
   cancelButtonText: {
     color: colors.textSecondary,
     fontSize: 14,
     fontWeight: '600',
+  },
+
+  cancelButtonTextHover: {
+    color: colors.textPrimary,
   },
 });

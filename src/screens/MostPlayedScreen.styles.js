@@ -94,6 +94,13 @@ export default StyleSheet.create({
     paddingHorizontal: 2,
   },
 
+  /* Hover style for rows (other tracks) */
+  rowHover: {
+    backgroundColor: '#162a1a', // subtle green-tinted highlight
+    borderRadius: 8,
+    paddingHorizontal: 8,
+  },
+
   rowText: {
     flex: 1,
   },
@@ -221,5 +228,10 @@ export default StyleSheet.create({
   clearButtonText: {
     color: '#fff',
     fontWeight: '700',
+  },
+
+  /* generic pressed helper used on buttons */
+  controlPressed: {
+    opacity: 0.9,
   },
 });

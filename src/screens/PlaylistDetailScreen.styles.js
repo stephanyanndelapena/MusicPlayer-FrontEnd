@@ -77,6 +77,10 @@ export default StyleSheet.create({
   headerActionPressed: {
     opacity: 0.85,
   },
+  /* Hover: green border only (no fill change) */
+  headerActionHover: {
+    borderColor: colors.accent,
+  },
   headerActionText: {
     color: colors.textPrimary,
     fontWeight: '600',
@@ -90,6 +94,12 @@ export default StyleSheet.create({
     borderRadius: 6,
     marginRight: 8,
     marginBottom: 8,
+  },
+  /* On hover: show red border only, no fill */
+  deleteButtonHover: {
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.dangerText,
   },
   deleteButtonPressed: {
     opacity: 0.9,
@@ -110,6 +120,14 @@ export default StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 8,
     marginBottom: 10,
+  },
+  /* Hover for track row: subtle green-tinted highlight */
+  trackItemHover: {
+    backgroundColor: '#162a1a',
+  },
+  /* Active/current track style (keeps existing darker green) */
+  trackItemActive: {
+    backgroundColor: '#162115',
   },
   trackItemPressed: {
     opacity: 0.95,

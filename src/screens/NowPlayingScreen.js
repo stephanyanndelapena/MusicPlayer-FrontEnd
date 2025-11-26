@@ -23,6 +23,7 @@ export default function NowPlayingScreen({ navigation }) {
   // Make header same color as body and remove bottom border/shadow (no white line)
   useEffect(() => {
     navigation.setOptions({
+      title: 'Now Playing',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,

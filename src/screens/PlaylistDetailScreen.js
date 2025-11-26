@@ -24,6 +24,15 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedForMenu, setSelectedForMenu] = useState(null);
 
+  // hover state for header buttons
+  const [hoverEdit, setHoverEdit] = useState(false);
+  const [hoverAdd, setHoverAdd] = useState(false);
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const [hoverDelete, setHoverDelete] = useState(false);
+
+  // hover state for track rows (store id of hovered track)
+  const [hoveredTrackId, setHoveredTrackId] = useState(null);
+
   const { currentTrack, isPlaying, play, pause } = usePlayer();
 
   const fetchPlaylist = useCallback(async () => {
@@ -48,6 +57,7 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   // Make header the same color as the screen body and remove the bottom border/shadow
   useEffect(() => {
     navigation.setOptions({
+      title: 'Playlist',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
@@ -178,32 +188,53 @@ export default function PlaylistDetailScreen({ route, navigation }) {
 
       <View style={styles.actionRow}>
         <Pressable
-          style={({ pressed }) => [styles.headerAction, pressed && styles.headerActionPressed]}
           onPress={() => navigation.navigate('PlaylistForm', { playlist })}
+          onHoverIn={() => setHoverEdit(true)}
+          onHoverOut={() => setHoverEdit(false)}
+          style={({ pressed }) => [
+            styles.headerAction,
+            pressed && styles.headerActionPressed,
+            hoverEdit && styles.headerActionHover,
+          ]}
         >
           <Text style={styles.headerActionText}>Edit Playlist</Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.headerAction, pressed && styles.headerActionPressed]}
           onPress={() => navigation.navigate('TrackForm', { playlistId: playlist.id })}
+          onHoverIn={() => setHoverAdd(true)}
+          onHoverOut={() => setHoverAdd(false)}
+          style={({ pressed }) => [
+            styles.headerAction,
+            pressed && styles.headerActionPressed,
+            hoverAdd && styles.headerActionHover,
+          ]}
         >
           <Text style={styles.headerActionText}>Add Track (Upload)</Text>
         </Pressable>
 
         <Pressable
-          style={({ pressed }) => [styles.headerAction, pressed && styles.headerActionPressed]}
           onPress={() => navigation.navigate('NowPlaying')}
+          onHoverIn={() => setHoverOpen(true)}
+          onHoverOut={() => setHoverOpen(false)}
+          style={({ pressed }) => [
+            styles.headerAction,
+            pressed && styles.headerActionPressed,
+            hoverOpen && styles.headerActionHover,
+          ]}
         >
           <Text style={styles.headerActionText}>Open Player</Text>
         </Pressable>
 
         <Pressable
           onPress={handleDeletePlaylist}
+          onHoverIn={() => setHoverDelete(true)}
+          onHoverOut={() => setHoverDelete(false)}
           style={({ pressed }) => [
             styles.deleteButton,
             deletingPlaylist && styles.deleteButtonDisabled,
             pressed && styles.deleteButtonPressed,
+            hoverDelete && styles.deleteButtonHover,
           ]}
           disabled={deletingPlaylist}
         >
@@ -230,11 +261,20 @@ export default function PlaylistDetailScreen({ route, navigation }) {
           }
 
           const removing = removingTrackId === item.id;
+          const isHovered = hoveredTrackId === item.id;
+          const isCurrent = currentTrack && currentTrack.id === item.id && isPlaying;
 
           return (
             <Pressable
               onPress={() => togglePlayFor(item)}
-              style={({ pressed }) => [styles.trackItem, pressed && styles.trackItemPressed]}
+              onHoverIn={() => setHoveredTrackId(item.id)}
+              onHoverOut={() => setHoveredTrackId(null)}
+              style={({ pressed }) => [
+                styles.trackItem,
+                isCurrent ? styles.trackItemActive : null,
+                pressed && styles.trackItemPressed,
+                isHovered ? styles.trackItemHover : null,
+              ]}
             >
               {artUri ? <Image source={{ uri: artUri }} style={styles.trackThumb} /> : <View style={styles.trackThumbPlaceholder} />}
 

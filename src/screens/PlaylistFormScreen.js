@@ -3,11 +3,11 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   Alert,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Pressable,
 } from 'react-native';
 import api from '../api';
 import styles, { colors } from './PlaylistFormScreen.styles';
@@ -68,6 +68,61 @@ export default function PlaylistFormScreen({ route, navigation }) {
     }
   };
 
+  // Hoverable/pressable button that supports a 'primary' (filled) and 'outlined' variant.
+  function HoverButton({ title, onPress, variant = 'primary', disabled = false, accessibilityLabel }) {
+    const [hovered, setHovered] = useState(false);
+
+    return (
+      <Pressable
+        onPress={onPress}
+        disabled={disabled}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }) => {
+          const active = pressed || hovered;
+          if (variant === 'primary') {
+            return [
+              styles.button,
+              disabled ? styles.buttonDisabled : null,
+              !disabled && active ? styles.buttonHover : null,
+            ];
+          } else {
+            return [
+              styles.cancelButton,
+              !disabled && active ? styles.cancelButtonHover : null,
+            ];
+          }
+        }}
+        accessibilityRole="button"
+        accessibilityLabel={accessibilityLabel || title}
+      >
+        {({ pressed }) => {
+          const active = pressed || hovered;
+          if (variant === 'primary') {
+            return (
+              <Text style={[
+                styles.buttonText,
+                disabled ? styles.buttonTextDisabled : null,
+                !disabled && active ? styles.buttonTextHover : null,
+              ]}>
+                {title}
+              </Text>
+            );
+          } else {
+            return (
+              <Text style={[
+                styles.cancelButtonText,
+                !disabled && active ? styles.cancelButtonTextHover : null,
+              ]}>
+                {title}
+              </Text>
+            );
+          }
+        }}
+      </Pressable>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       style={styles.container}
@@ -99,24 +154,22 @@ export default function PlaylistFormScreen({ route, navigation }) {
         />
 
         <View style={styles.actions}>
-          <TouchableOpacity
-            style={[styles.button, saving ? styles.buttonDisabled : null]}
+          <HoverButton
+            title={saving ? 'Saving...' : 'Save'}
             onPress={submit}
-            activeOpacity={0.8}
+            variant="primary"
             disabled={saving}
             accessibilityLabel="Save playlist"
-          >
-            <Text style={styles.buttonText}>{saving ? 'Saving...' : 'Save'}</Text>
-          </TouchableOpacity>
+          />
 
-          <TouchableOpacity
-            style={styles.cancelButton}
-            onPress={() => navigation.goBack()}
-            activeOpacity={0.8}
-            accessibilityLabel="Cancel"
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
+          <View style={{ marginLeft: 12 }}>
+            <HoverButton
+              title="Cancel"
+              onPress={() => navigation.goBack()}
+              variant="outlined"
+              accessibilityLabel="Cancel"
+            />
+          </View>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>

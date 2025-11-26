@@ -63,6 +63,12 @@ export default StyleSheet.create({
     fontWeight: '600',
   },
 
+  /* Hover state for pick buttons: only change border color to green (accent) */
+  pickButtonHover: {
+    backgroundColor: 'transparent', // keep background same
+    borderColor: colors.accent,
+  },
+
   saveButton: {
     marginTop: 8,
     backgroundColor: colors.accent,
@@ -75,6 +81,12 @@ export default StyleSheet.create({
   saveButtonDisabled: {
     opacity: 0.6,
   },
+
+  /* Normal hover/darker effect for save button */
+  saveButtonHover: {
+    backgroundColor: '#18a84a',
+  },
+
   saveButtonText: {
     color: colors.textPrimary,
     fontWeight: '800',

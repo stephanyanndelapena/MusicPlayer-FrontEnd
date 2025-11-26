@@ -1,4 +1,3 @@
-// Spotify-inspired dark theme styles for PlaylistsScreen
 import { StyleSheet } from 'react-native';
 
 export const colors = {
@@ -62,6 +61,10 @@ export default StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
   },
+  /* Hover state for playlist row */
+  rowHover: {
+    backgroundColor: '#222622', // subtle highlight on hover
+  },
   thumb: {
     width: 56,
     height: 56,
@@ -100,6 +103,10 @@ export default StyleSheet.create({
     paddingVertical: 12,
     alignItems: 'center',
     backgroundColor: colors.surface,
+  },
+  /* Hover state for track row */
+  trackRowHover: {
+    backgroundColor: '#162a1a', // subtle green-tinted highlight for track hover
   },
   trackRowActive: {
     backgroundColor: '#162115',
@@ -200,5 +207,24 @@ export default StyleSheet.create({
   playlistOptionCount: {
     color: colors.textSecondary,
     fontSize: 14,
+  },
+
+  /* Outlined button styles */
+  outlinedButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 84,
+  },
+  outlinedButtonText: {
+    fontSize: 14,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  outlinedButtonTextFilled: {
+    color: colors.textPrimary,
   },
 });

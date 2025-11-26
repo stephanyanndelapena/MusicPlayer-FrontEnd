@@ -5,10 +5,10 @@ import {
   FlatList,
   TouchableOpacity,
   Image,
-  Button,
   Alert,
   Modal,
   ActivityIndicator,
+  Pressable,
 } from 'react-native';
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
@@ -38,9 +38,44 @@ const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderSt
   return <Image source={source} style={imageStyle || styles.trackThumb} />;
 });
 
+/* Playlist row component with hover highlight */
+function PlaylistRow({ item, onPress }) {
+  const [hovered, setHovered] = useState(false);
+
+  const firstTrackArtwork = item.tracks && item.tracks.length > 0 ? item.tracks[0].artwork : null;
+  const raw = item.image || firstTrackArtwork || null;
+  const artUrl = resolveArtworkUrl(raw);
+  const thumbSource = artUrl ? { uri: artUrl } : null;
+
+  return (
+    <View style={styles.row}>
+      <Pressable
+        onPress={onPress}
+        onHoverIn={() => setHovered(true)}
+        onHoverOut={() => setHovered(false)}
+        style={({ pressed }) => [
+          { flexDirection: 'row', flex: 1, alignItems: 'center' },
+          hovered || pressed ? styles.rowHover : null,
+        ]}
+        accessibilityRole="button"
+      >
+        {thumbSource ? <Image source={thumbSource} style={styles.thumb} /> : <View style={styles.thumbPlaceholder} />}
+
+        <View style={{ flex: 1 }}>
+          <Text style={styles.title} numberOfLines={1}>
+            {item.name}
+          </Text>
+          <Text style={styles.count}>{(item.tracks || []).length} tracks</Text>
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
 const TrackItem = React.memo(function TrackItem({ item, onAddToPlaylist, queue, index }) {
   const { currentTrack, isPlaying, play } = usePlayer();
   const isCurrent = currentTrack && currentTrack.id === item.id && isPlaying;
+  const [hovered, setHovered] = useState(false);
 
   const handlePlay = useCallback(async () => {
     try {
@@ -52,11 +87,17 @@ const TrackItem = React.memo(function TrackItem({ item, onAddToPlaylist, queue, 
   }, [item, play, queue, index]);
 
   return (
-    <TouchableOpacity
-      style={[styles.trackRow, isCurrent ? styles.trackRowActive : null]}
+    <Pressable
       onPress={handlePlay}
-      activeOpacity={0.7}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => [
+        styles.trackRow,
+        isCurrent ? styles.trackRowActive : null,
+        (hovered || pressed) ? styles.trackRowHover : null,
+      ]}
       accessibilityLabel={`Play ${item.title} by ${item.artist}`}
+      accessibilityRole="button"
     >
       <Artwork artwork={item.artwork} imageStyle={styles.trackThumb} placeholderStyle={styles.trackThumbPlaceholder} />
 
@@ -78,13 +119,46 @@ const TrackItem = React.memo(function TrackItem({ item, onAddToPlaylist, queue, 
           <Text style={styles.addIcon}>＋</Text>
         </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </Pressable>
   );
 }, (prev, next) => {
   const a = prev.item;
   const b = next.item;
   return a.id === b.id && a.artwork === b.artwork && a.title === b.title && a.artist === b.artist;
 });
+
+/* OutlinedButton - shows as green border (transparent) and fills with green on hover/press */
+function OutlinedButton({ title, onPress, style, textStyle, color = colors.accent, accessibilityLabel }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => {
+        const filled = pressed || hovered;
+        return [
+          styles.outlinedButton,
+          { borderColor: color },
+          filled ? { backgroundColor: color } : { backgroundColor: 'transparent' },
+          style,
+        ];
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+    >
+      {({ pressed }) => {
+        const filled = pressed || hovered;
+        return (
+          <Text style={[styles.outlinedButtonText, textStyle, filled ? styles.outlinedButtonTextFilled : null]}>
+            {title}
+          </Text>
+        );
+      }}
+    </Pressable>
+  );
+}
 
 export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
@@ -139,29 +213,7 @@ export default function PlaylistsScreen({ navigation }) {
   }, [navigation]);
 
   const renderPlaylistItem = ({ item }) => {
-    const firstTrackArtwork = item.tracks && item.tracks.length > 0 ? item.tracks[0].artwork : null;
-    const raw = item.image || firstTrackArtwork || null;
-    const artUrl = resolveArtworkUrl(raw);
-    const thumbSource = artUrl ? { uri: artUrl } : null;
-
-    return (
-      <View style={styles.row}>
-        <TouchableOpacity
-          style={{ flexDirection: 'row', flex: 1, alignItems: 'center' }}
-          onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })}
-          activeOpacity={0.8}
-        >
-          {thumbSource ? <Image source={thumbSource} style={styles.thumb} /> : <View style={styles.thumbPlaceholder} />}
-
-          <View style={{ flex: 1 }}>
-            <Text style={styles.title} numberOfLines={1}>
-              {item.name}
-            </Text>
-            <Text style={styles.count}>{(item.tracks || []).length} tracks</Text>
-          </View>
-        </TouchableOpacity>
-      </View>
-    );
+    return <PlaylistRow item={item} onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })} />;
   };
 
   const openAddToPlaylistModal = useCallback(
@@ -232,15 +284,15 @@ export default function PlaylistsScreen({ navigation }) {
 
         <View style={styles.headerButtons}>
           <View style={styles.smallButton}>
-            <Button title="Create" onPress={() => navigation.navigate('PlaylistForm')} color={colors.accent} />
+            <OutlinedButton title="Create" onPress={() => navigation.navigate('PlaylistForm')} color={colors.accent} />
           </View>
 
           <View style={styles.smallButton}>
-            <Button title="Add Song" onPress={() => navigation.navigate('TrackForm')} color={colors.accent} />
+            <OutlinedButton title="Add Song" onPress={() => navigation.navigate('TrackForm')} color={colors.accent} />
           </View>
 
           <View style={styles.smallButton}>
-            <Button title="Most Played" onPress={() => navigation.navigate('MostPlayed')} color={colors.accent} />
+            <OutlinedButton title="Most Played" onPress={() => navigation.navigate('MostPlayed')} color={colors.accent} />
           </View>
         </View>
       </View>
@@ -282,7 +334,7 @@ export default function PlaylistsScreen({ navigation }) {
             )}
 
             <View style={{ marginTop: 12 }}>
-              <Button title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} color={colors.accent} />
+              <OutlinedButton title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} color={colors.accent} />
             </View>
           </View>
         </View>

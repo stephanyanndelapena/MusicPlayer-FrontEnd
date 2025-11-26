@@ -1,6 +1,6 @@
 // src/screens/MostPlayedScreen.js
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, TouchableOpacity, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { getMostPlayed, getAllPlayCounts, clearPlayCounts } from '../utils/playCounts';
 import styles, { colors } from './MostPlayedScreen.styles';
 
@@ -13,6 +13,7 @@ export default function MostPlayedScreen({ navigation }) {
   const [top, setTop] = useState(null);
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [hoveredTrackId, setHoveredTrackId] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -31,7 +32,7 @@ export default function MostPlayedScreen({ navigation }) {
   useEffect(() => {
     // set title and make header match screen background; remove bottom border/shadow
     navigation.setOptions({
-      title: 'Most Played',
+      title: 'Most Played Track',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
@@ -60,20 +61,20 @@ export default function MostPlayedScreen({ navigation }) {
         <Text style={styles.message}>No plays recorded yet.</Text>
         <View style={styles.spacer12} />
         <View style={styles.centeredControls}>
-          <TouchableOpacity onPress={load} style={styles.refreshButton} activeOpacity={0.8} accessibilityLabel="Refresh">
+          <Pressable onPress={load} style={({ pressed }) => [styles.refreshButton, pressed && styles.controlPressed]} accessibilityLabel="Refresh">
             <Text style={styles.refreshIcon}>⟳</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             onPress={async () => {
               await clearPlayCounts();
               await load();
             }}
-            style={styles.clearButton}
-            activeOpacity={0.8}
+            style={({ pressed }) => [styles.clearButton, pressed && styles.controlPressed]}
+            accessibilityLabel="Clear"
           >
             <Text style={styles.clearButtonText}>Clear</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
     );
@@ -104,16 +105,30 @@ export default function MostPlayedScreen({ navigation }) {
     );
   }
 
-  const renderItem = ({ item }) => (
-    <View style={styles.row}>
-      <RemoteImage uri={item.artwork} style={styles.thumb} placeholderStyle={styles.thumbPlaceholder} />
-      <View style={styles.rowText}>
-        <Text style={styles.title}>{item.title || '(unknown)'}</Text>
-        <Text style={styles.subtitle}>{item.artist || ''}</Text>
-        <Text style={styles.count}>Plays: {item.count || 0}</Text>
-      </View>
-    </View>
-  );
+  const renderItem = ({ item }) => {
+    const id = item?.id ?? String(item?.title ?? Math.random());
+    const isHovered = hoveredTrackId === id;
+
+    return (
+      <Pressable
+        onHoverIn={() => setHoveredTrackId(id)}
+        onHoverOut={() => setHoveredTrackId(null)}
+        onPress={() => {}}
+        style={({ pressed }) => [
+          styles.row,
+          (isHovered || pressed) ? styles.rowHover : null,
+        ]}
+        accessibilityRole="button"
+      >
+        <RemoteImage uri={item.artwork} style={styles.thumb} placeholderStyle={styles.thumbPlaceholder} />
+        <View style={styles.rowText}>
+          <Text style={styles.title}>{item.title || '(unknown)'}</Text>
+          <Text style={styles.subtitle}>{item.artist || ''}</Text>
+          <Text style={styles.count}>Plays: {item.count || 0}</Text>
+        </View>
+      </Pressable>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -127,20 +142,20 @@ export default function MostPlayedScreen({ navigation }) {
 
         {/* Controls placed inside topCard at bottom-right */}
         <View style={styles.topCardControls} pointerEvents="box-none">
-          <TouchableOpacity onPress={load} style={styles.topIconButton} activeOpacity={0.8} accessibilityLabel="Refresh">
+          <Pressable onPress={load} style={({ pressed }) => [styles.topIconButton, pressed && styles.controlPressed]} accessibilityLabel="Refresh">
             <Text style={styles.topIcon}>⟳</Text>
-          </TouchableOpacity>
+          </Pressable>
 
-          <TouchableOpacity
+          <Pressable
             onPress={async () => {
               await clearPlayCounts();
               await load();
             }}
-            style={styles.topClearButton}
-            activeOpacity={0.8}
+            style={({ pressed }) => [styles.topClearButton, pressed && styles.controlPressed]}
+            accessibilityLabel="Clear"
           >
             <Text style={styles.topClearText}>Clear</Text>
-          </TouchableOpacity>
+          </Pressable>
         </View>
       </View>
 
