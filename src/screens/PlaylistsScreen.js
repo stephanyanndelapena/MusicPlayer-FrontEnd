@@ -9,6 +9,7 @@ import {
   Modal,
   ActivityIndicator,
   Pressable,
+  TextInput,
 } from 'react-native';
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
@@ -163,6 +164,7 @@ function OutlinedButton({ title, onPress, style, textStyle, color = colors.accen
 export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
   const [tracks, setTracks] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
@@ -212,6 +214,22 @@ export default function PlaylistsScreen({ navigation }) {
     return () => unsub && unsub();
   }, [navigation]);
 
+  // Memoized filtered lists based on the search query
+  const queryLower = (searchQuery || '').trim().toLowerCase();
+  const filteredPlaylists = useMemo(() => {
+    if (!queryLower) return playlists;
+    return (playlists || []).filter((p) => (p.name || '').toLowerCase().includes(queryLower));
+  }, [playlists, queryLower]);
+
+  const filteredTracks = useMemo(() => {
+    if (!queryLower) return tracks;
+    return (tracks || []).filter((t) => {
+      const title = (t.title || '').toLowerCase();
+      const artist = (t.artist || '').toLowerCase();
+      return title.includes(queryLower) || artist.includes(queryLower);
+    });
+  }, [tracks, queryLower]);
+
   const renderPlaylistItem = ({ item }) => {
     return <PlaylistRow item={item} onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })} />;
   };
@@ -256,8 +274,8 @@ export default function PlaylistsScreen({ navigation }) {
   };
 
   const renderTrackItem = useCallback(
-    ({ item, index }) => <TrackItem item={item} onAddToPlaylist={openAddToPlaylistModal} queue={tracks} index={index} />,
-    [openAddToPlaylistModal, tracks]
+    ({ item, index }) => <TrackItem item={item} onAddToPlaylist={openAddToPlaylistModal} queue={filteredTracks} index={index} />,
+    [openAddToPlaylistModal, filteredTracks]
   );
 
   const TracksFooter = () => (
@@ -266,10 +284,12 @@ export default function PlaylistsScreen({ navigation }) {
         <Text style={styles.sectionTitle}>Recent tracks</Text>
       </View>
 
-      {tracks.length === 0 ? (
-        <Text style={styles.emptyText}>No songs yet. Use "Add Song" (header) to upload music.</Text>
+      {filteredTracks.length === 0 ? (
+        <Text style={styles.emptyText}>
+          {queryLower ? 'No songs match your search.' : 'No songs yet. Use "Add Song" (header) to upload music.'}
+        </Text>
       ) : (
-        <FlatList data={tracks} keyExtractor={(t) => String(t.id)} renderItem={renderTrackItem} ItemSeparatorComponent={() => <View style={styles.separator} />} />
+        <FlatList data={filteredTracks} keyExtractor={(t) => String(t.id)} renderItem={renderTrackItem} ItemSeparatorComponent={() => <View style={styles.separator} />} />
       )}
     </View>
   );
@@ -297,8 +317,30 @@ export default function PlaylistsScreen({ navigation }) {
         </View>
       </View>
 
+      {/* Search bar */}
+      <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
+          <Text style={{ color: '#888', marginRight: 8 }}>🔍</Text>
+          <TextInput
+            placeholder="Search playlists or tracks"
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={{ flex: 1, color: '#fff', paddingVertical: 8 }}
+            returnKeyType="search"
+            accessible={true}
+            accessibilityLabel="Search"
+          />
+          {searchQuery ? (
+            <Pressable onPress={() => setSearchQuery('')} style={{ padding: 6 }} accessibilityLabel="Clear search">
+              <Text style={{ color: '#fff' }}>✖</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
       <FlatList
-        data={playlists}
+        data={filteredPlaylists}
         keyExtractor={(p) => String(p.id)}
         renderItem={renderPlaylistItem}
         ItemSeparatorComponent={() => <View style={styles.separator} />}

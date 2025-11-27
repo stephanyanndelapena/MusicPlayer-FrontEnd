@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, Image, Pressable, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { View, Text, Image, TouchableOpacity, PanResponder } from 'react-native';
 import { usePlayer } from '../context/PlayerContext';
 import { incrementPlayCount } from '../utils/playCounts';
 import makeFullUrl from '../utils/makeFullUrl';
@@ -18,11 +18,15 @@ export default function NowPlayingScreen({ navigation }) {
     playPrev,
     isShuffled,
     toggleShuffle,
-    isRepeating,
+    isRepeat,
     toggleRepeat,
   } = usePlayer();
 
   const [layout, setLayout] = useState(null);
+  const layoutRef = useRef(null);
+  const panResponder = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPct, setDragPct] = useState(null);
 
   // Make header same color as body and remove bottom border/shadow (no white line)
   useEffect(() => {
@@ -61,16 +65,48 @@ export default function NowPlayingScreen({ navigation }) {
   };
 
   const onProgressLayout = (ev) => {
-    setLayout(ev.nativeEvent.layout);
+    const l = ev.nativeEvent.layout;
+    setLayout(l);
+    layoutRef.current = l;
   };
 
-  const onProgressPress = (ev) => {
-    if (!layout || !durationMillis) return;
-    const x = ev.nativeEvent.locationX ?? ev.nativeEvent.pageX;
-    const pct = Math.max(0, Math.min(1, x / layout.width));
-    const newMs = Math.round(pct * durationMillis);
-    seekTo(newMs);
+  const handleDrag = (ev) => {
+    const l = layoutRef.current;
+    if (!l) return;
+    const x = ev.nativeEvent.locationX ?? 0;
+    const pct = Math.max(0, Math.min(1, x / l.width));
+    setIsDragging(true);
+    setDragPct(pct);
+    // Continually update position while dragging
+    seekTo(pct);
   };
+
+  const handleDragEnd = (ev) => {
+    const l = layoutRef.current;
+    if (!l) {
+      setIsDragging(false);
+      setDragPct(null);
+      return;
+    }
+    const x = ev.nativeEvent.locationX ?? 0;
+    const pct = Math.max(0, Math.min(1, x / l.width));
+    // Final seek
+    seekTo(pct);
+    setIsDragging(false);
+    setDragPct(null);
+  };
+
+  useEffect(() => {
+    panResponder.current = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => handleDrag(evt),
+      onPanResponderMove: (evt) => handleDrag(evt),
+      onPanResponderRelease: (evt) => handleDragEnd(evt),
+      onPanResponderTerminate: (evt) => handleDragEnd(evt),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seekTo]);
 
   const handlePlayToggle = async () => {
     if (isPlaying) {
@@ -100,11 +136,21 @@ export default function NowPlayingScreen({ navigation }) {
         {currentTrack.artist}
       </Text>
 
-      <Pressable style={styles.progressWrap} onLayout={onProgressLayout} onPress={onProgressPress} accessibilityLabel="Seek bar">
+      <View
+        style={styles.progressWrap}
+        onLayout={onProgressLayout}
+        {...(panResponder.current ? panResponder.current.panHandlers : {})}
+        accessibilityLabel="Seek bar"
+      >
         <View style={styles.progressBackground}>
-          <View style={[styles.progressFill, { width: `${Math.max(0, Math.min(100, progress))}%` }]} />
+          <View
+            style={[
+              styles.progressFill,
+              { width: `${Math.max(0, Math.min(100, isDragging && dragPct != null ? dragPct * 100 : progress))}%` },
+            ]}
+          />
         </View>
-      </Pressable>
+      </View>
 
       <View style={styles.timeRow}>
         <Text style={styles.timeText}>{format(positionMillis)}</Text>
@@ -137,14 +183,14 @@ export default function NowPlayingScreen({ navigation }) {
         </TouchableOpacity>
 
         {/* Repeat (single-track) button - same style as prev/next */}
-        <TouchableOpacity onPress={toggleRepeat} style={styles.transportButton} accessibilityLabel="Toggle repeat">
+        <TouchableOpacity onPress={toggleRepeat} style={styles.transportButton} accessibilityLabel={isRepeat ? 'Repeat on' : 'Repeat off'}>
           <Text
             style={[
               styles.transportIcon,
-              { color: isRepeating ? (colors.textPrimary || '#fff') : (colors.textSecondary || '#9e9e9e') },
+              { color: isRepeat ? (colors.textPrimary || '#fff') : (colors.textSecondary || '#9e9e9e') },
             ]}
           >
-            {isRepeating ? '🔂' : '🔁'}
+            {isRepeat ? '🔂' : '⟳'}
           </Text>
         </TouchableOpacity>
       </View>

@@ -16,6 +16,8 @@ export default function NowPlayingModal() {
     playNext,
     isShuffled,
     toggleShuffle,
+    isRepeat,
+    toggleRepeat,
   } = usePlayer();
 
   if (!currentTrack) return null;
@@ -90,6 +92,16 @@ export default function NowPlayingModal() {
           >
             <Text style={styles.icon}>⏭</Text>
           </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => toggleRepeat()}
+            style={styles.iconButton}
+          >
+            <Text style={[styles.icon, isRepeat && styles.iconActive]}>
+              {isRepeat ? '🔂' : '⟳'}
+            </Text>
+          </TouchableOpacity>
+
         </View>
       </View>
 
@@ -110,6 +122,7 @@ export default function NowPlayingModal() {
         <Text style={styles.timeTextRight}>{format(durationMillis)}</Text>
       </View>
     </TouchableOpacity>
+
   );
 }
 

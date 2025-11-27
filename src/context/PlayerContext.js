@@ -14,12 +14,17 @@ const PlayerContext = createContext(null);
 export function PlayerProvider({ children }) {
   const soundRef = useRef(null);
   const positionTimerRef = useRef(null);
+  const pendingSeekRef = useRef(null);
+  const isRepeatRef = useRef(false);
+  const queueRef = useRef([]);
+  const queueIndexRef = useRef(0);
 
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
   const [originalQueue, setOriginalQueue] = useState([]); // Store original order
   const [isShuffled, setIsShuffled] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
 
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
@@ -167,7 +172,9 @@ export function PlayerProvider({ children }) {
         // so that the next call to playNext() will play the original-next (index + 1).
         if (currentIndexInOriginal !== -1) {
           setQueue(restored);
+          queueRef.current = restored;
           setQueueIndex(currentIndexInOriginal);
+          queueIndexRef.current = currentIndexInOriginal;
         } else {
           // Fallback: try to map the next item from the shuffled queue into the original queue
           const nextInShuffled = queue.length > 0 ? queue[(queueIndex + 1) % queue.length] : null;
@@ -182,26 +189,33 @@ export function PlayerProvider({ children }) {
               // set queueIndex so that playNext() will advance to nextIndexInOriginal
               const newIndex = (nextIndexInOriginal - 1 + restored.length) % restored.length;
               setQueue(restored);
+              queueRef.current = restored;
               setQueueIndex(newIndex);
+              queueIndexRef.current = newIndex;
             } else {
               // completely fallback: restore and place current at index 0
               setQueue(restored);
+              queueRef.current = restored;
               setQueueIndex(0);
+              queueIndexRef.current = 0;
             }
           } else {
             setQueue(restored);
+            queueRef.current = restored;
             setQueueIndex(0);
+            queueIndexRef.current = 0;
           }
         }
       }
 
       // Clear the saved original queue since we're back to normal order
-      setOriginalQueue([]);
-      setIsShuffled(false);
+  setOriginalQueue([]);
+  setIsShuffled(false);
       console.log('Shuffle OFF - restored original order');
     } else {
       // Turn on shuffle - always snapshot the current queue as the original
-      setOriginalQueue([...queue]); // create a copy to preserve original order
+  setOriginalQueue([...queue]); // create a copy to preserve original order
+  queueRef.current = queue;
 
       const currentTrackId = currentTrack?.id;
       let shuffledQueue = shuffleArray(queue);
@@ -235,12 +249,31 @@ export function PlayerProvider({ children }) {
 
           // Update queue index to where we inserted the current track
           setQueueIndex(insertIndex);
+          queueIndexRef.current = insertIndex;
         }
       }
 
       setQueue(shuffledQueue);
+      queueRef.current = shuffledQueue;
       setIsShuffled(true);
       console.log('Shuffle ON - new shuffled order');
+    }
+  };
+
+  // Toggle repeat (loop current track)
+  const toggleRepeat = async () => {
+    const newVal = !isRepeat;
+    setIsRepeat(newVal);
+    isRepeatRef.current = newVal;
+
+    // If a sound is loaded, update its looping status immediately
+    try {
+      if (soundRef.current && soundRef.current.setIsLoopingAsync) {
+        // setIsLoopingAsync expects a boolean
+        await soundRef.current.setIsLoopingAsync(newVal);
+      }
+    } catch (e) {
+      console.warn('toggleRepeat error', e);
     }
   };
 
@@ -255,6 +288,7 @@ export function PlayerProvider({ children }) {
     if (Array.isArray(opts.queue)) {
       // Always store a copy of the provided queue to avoid external mutation issues.
       setQueue(opts.queue);
+      queueRef.current = opts.queue;
 
       // Only snapshot originalQueue when NOT in shuffled mode.
       // This avoids playNext/playPrev during shuffle from overwriting originalQueue.
@@ -264,7 +298,20 @@ export function PlayerProvider({ children }) {
 
       if (typeof opts.index === 'number') {
         setQueueIndex(opts.index);
+        queueIndexRef.current = opts.index;
       }
+    }
+
+    // If shuffle was active but this play call is a user-initiated selection (not internal next/prev),
+    // turn off shuffle so the UI reflects that the user chose a specific song.
+    // Internal calls (playNext/playPrev) pass opts._internal=true to avoid this.
+    if (isShuffled && !(opts && opts._internal)) {
+      setIsShuffled(false);
+      // clear originalQueue snapshot since we're no longer in shuffled mode
+      setOriginalQueue([]);
+      // keep queueRef as the latest queue (opts.queue already set above when provided)
+      // note: do not call toggleShuffle() here because the user explicitly selected a new song
+      // and we should respect the provided queue order.
     }
 
     try {
@@ -273,6 +320,14 @@ export function PlayerProvider({ children }) {
         const status = await soundRef.current.getStatusAsync();
         if (status.isLoaded) {
           await soundRef.current.playAsync();
+          // Ensure looping reflects current repeat setting when resuming
+          try {
+            if (soundRef.current.setIsLoopingAsync) {
+              await soundRef.current.setIsLoopingAsync(isRepeatRef.current);
+            }
+          } catch (e) {
+            // non-fatal
+          }
           setIsPlaying(true);
           startPositionTimer();
           incrementPlayCount(track);
@@ -292,6 +347,40 @@ export function PlayerProvider({ children }) {
       }
 
       const loadedStatus = await sound.loadAsync({ uri }, { shouldPlay: true });
+      // Apply repeat/looping preference immediately after load
+      try {
+        if (sound.setIsLoopingAsync) {
+          await sound.setIsLoopingAsync(isRepeatRef.current);
+        }
+      } catch (e) {
+        // non-fatal
+      }
+      // If there was a pending seek requested before the sound finished loading,
+      // apply it now using the loaded status (which should include duration).
+      try {
+        if (pendingSeekRef.current != null) {
+          const requested = pendingSeekRef.current;
+          // If requested is a fraction but we don't yet have a valid duration, keep it pending
+          const hasDuration = (loadedStatus.durationMillis ?? 0) > 0;
+          if (typeof requested === 'number' && requested >= 0 && requested <= 1 && !hasDuration) {
+            // leave pendingSeekRef as-is for the playback status handler to pick up later
+          } else {
+            // consume pending seek and apply now
+            pendingSeekRef.current = null;
+            let targetMs = requested;
+            if (typeof requested === 'number' && requested >= 0 && requested <= 1) {
+              const dur = loadedStatus.durationMillis ?? 0;
+              targetMs = Math.round(requested * dur);
+            }
+            if (typeof targetMs === 'number' && sound.setPositionAsync) {
+              await sound.setPositionAsync(targetMs);
+              setPositionMillis(targetMs);
+            }
+          }
+        }
+      } catch (e) {
+        // non-fatal
+      }
       setCurrentTrack(track);
       setIsPlaying(true);
       setPositionMillis(0);
@@ -304,11 +393,39 @@ export function PlayerProvider({ children }) {
 
       sound.setOnPlaybackStatusUpdate((status) => {
         if (!status) return;
+        // If the sound just became loaded and there is a pending seek,
+        // apply it now (use the status which contains the duration).
+        if (status.isLoaded && pendingSeekRef.current != null) {
+          (async () => {
+            try {
+              const requested = pendingSeekRef.current;
+              // If requested is a fraction, wait until we have a non-zero duration
+              const dur = status.durationMillis ?? 0;
+              if (typeof requested === 'number' && requested >= 0 && requested <= 1 && dur === 0) {
+                // keep pending
+                return;
+              }
+              pendingSeekRef.current = null;
+              let targetMs = requested;
+              if (typeof requested === 'number' && requested >= 0 && requested <= 1) {
+                targetMs = Math.round(requested * dur);
+              }
+              if (typeof targetMs === 'number' && soundRef.current && soundRef.current.setPositionAsync) {
+                await soundRef.current.setPositionAsync(targetMs);
+                setPositionMillis(targetMs);
+              }
+            } catch (e) {
+              // non-fatal
+            }
+          })();
+        }
         setPositionMillis(status.positionMillis ?? 0);
         setDurationMillis(status.durationMillis ?? 0);
         setIsPlaying(status.isPlaying ?? false);
 
-        if (status.didJustFinish && !status.isLooping) {
+        // When a track finishes, advance to the next track unless repeat is enabled.
+        // Use the stable ref `isRepeatRef` to avoid stale-closure issues inside this callback.
+        if (status.didJustFinish && !isRepeatRef.current) {
           playNext();
         }
       });
@@ -334,9 +451,30 @@ export function PlayerProvider({ children }) {
     try {
       if (!soundRef.current) return;
       const status = await soundRef.current.getStatusAsync();
+      // Handle fractional seeks (0..1) differently: if we don't know duration yet,
+      // keep the fraction pending until duration is available.
+      if (typeof ms === 'number' && ms >= 0 && ms <= 1) {
+        const duration = status.durationMillis ?? durationMillis ?? 0;
+        if (status.isLoaded && duration > 0) {
+          const targetMs = Math.round(ms * duration);
+          await soundRef.current.setPositionAsync(targetMs);
+          setPositionMillis(targetMs);
+        } else {
+          // keep fraction pending until duration is known
+          pendingSeekRef.current = ms;
+        }
+        return;
+      }
+
+      // ms is an absolute millisecond value. If the sound is loaded, seek now,
+      // otherwise save it pending.
       if (status.isLoaded) {
-        await soundRef.current.setPositionAsync(ms);
-        setPositionMillis(ms);
+        if (typeof ms === 'number') {
+          await soundRef.current.setPositionAsync(ms);
+          setPositionMillis(ms);
+        }
+      } else {
+        pendingSeekRef.current = ms;
       }
     } catch (e) {
       console.warn('seekTo error', e);
@@ -345,11 +483,26 @@ export function PlayerProvider({ children }) {
 
   const playNext = async () => {
     try {
-      if (!queue || queue.length === 0) return;
-      const nextIndex = (queueIndex + 1) % queue.length;
-      const nextTrack = queue[nextIndex];
+      // If repeat was enabled, disable it when the user presses next so playback advances
+      if (isRepeatRef.current) {
+        setIsRepeat(false);
+        isRepeatRef.current = false;
+        try {
+          if (soundRef.current && soundRef.current.setIsLoopingAsync) {
+            await soundRef.current.setIsLoopingAsync(false);
+          }
+        } catch (e) {
+          // non-fatal
+        }
+      }
+      const q = queueRef.current ?? queue;
+      if (!q || q.length === 0) return;
+      const currentIdx = queueIndexRef.current ?? queueIndex;
+      const nextIndex = (currentIdx + 1) % q.length;
+      const nextTrack = q[nextIndex];
       setQueueIndex(nextIndex);
-      await play(nextTrack, { queue, index: nextIndex });
+      queueIndexRef.current = nextIndex;
+      await play(nextTrack, { queue: q, index: nextIndex, _internal: true });
     } catch (e) {
       console.warn('playNext error', e);
     }
@@ -357,11 +510,26 @@ export function PlayerProvider({ children }) {
 
   const playPrev = async () => {
     try {
-      if (!queue || queue.length === 0) return;
-      const prevIndex = queueIndex > 0 ? queueIndex - 1 : queue.length - 1;
-      const prevTrack = queue[prevIndex];
+      // If repeat was enabled, disable it when the user presses previous so playback advances
+      if (isRepeatRef.current) {
+        setIsRepeat(false);
+        isRepeatRef.current = false;
+        try {
+          if (soundRef.current && soundRef.current.setIsLoopingAsync) {
+            await soundRef.current.setIsLoopingAsync(false);
+          }
+        } catch (e) {
+          // non-fatal
+        }
+      }
+      const q = queueRef.current ?? queue;
+      if (!q || q.length === 0) return;
+      const currentIdx = queueIndexRef.current ?? queueIndex;
+      const prevIndex = currentIdx > 0 ? currentIdx - 1 : q.length - 1;
+      const prevTrack = q[prevIndex];
       setQueueIndex(prevIndex);
-      await play(prevTrack, { queue, index: prevIndex });
+      queueIndexRef.current = prevIndex;
+      await play(prevTrack, { queue: q, index: prevIndex, _internal: true });
     } catch (e) {
       console.warn('playPrev error', e);
     }
@@ -383,6 +551,8 @@ export function PlayerProvider({ children }) {
         queueIndex,
         isShuffled,
         toggleShuffle,
+        isRepeat,
+        toggleRepeat,
       }}
     >
       {children}

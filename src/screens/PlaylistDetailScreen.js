@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   Pressable,
   Platform,
   Modal,
+  TextInput,
 } from 'react-native';
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
@@ -69,21 +70,40 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     });
   }, [navigation]);
 
+  // local tracks and search (declare hooks unconditionally at top-level of component)
+  const tracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
+  const [searchQuery, setSearchQuery] = useState('');
+  const queryLower = (searchQuery || '').trim().toLowerCase();
+  const filteredTracks = useMemo(() => {
+    if (!queryLower) return tracks;
+    return (tracks || []).filter((t) => {
+      const title = (t.title || '').toLowerCase();
+      const artist = (t.artist || '').toLowerCase();
+      return title.includes(queryLower) || artist.includes(queryLower);
+    });
+  }, [tracks, queryLower]);
+
   const togglePlayFor = async (track) => {
     try {
       if (currentTrack && currentTrack.id === track.id && isPlaying) {
         await pause();
         return;
       }
+
+      const queue = filteredTracks.length > 0 ? filteredTracks : tracks;
+      const idx = queue.findIndex((t) => t.id === track.id);
+
       await play(track, {
-        queue: playlist?.tracks || [],
-        index: playlist?.tracks ? playlist.tracks.findIndex((t) => t.id === track.id) : 0,
+        queue,
+        index: idx >= 0 ? idx : 0,
       });
     } catch (e) {
       console.warn('togglePlayFor error', e);
       Alert.alert('Play error', 'Unable to play this track');
     }
   };
+
+  // togglePlayFor is defined later so it can use the filteredTracks (search results) as the playback queue
 
   const handleRemoveFromPlaylist = useCallback(
     async (track) => {
@@ -177,8 +197,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     );
   }
 
-  const tracks = Array.isArray(playlist.tracks) ? playlist.tracks : [];
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>{playlist.name}</Text>
@@ -244,8 +262,30 @@ export default function PlaylistDetailScreen({ route, navigation }) {
 
       <View style={styles.spacer12} />
 
+      {/* Search bar for tracks in this playlist */}
+      <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
+          <Text style={{ color: '#888', marginRight: 8 }}>🔍</Text>
+          <TextInput
+            placeholder="Search tracks in playlist"
+            placeholderTextColor="#888"
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            style={{ flex: 1, color: '#fff', paddingVertical: 8 }}
+            returnKeyType="search"
+            accessible={true}
+            accessibilityLabel="Search tracks"
+          />
+          {searchQuery ? (
+            <Pressable onPress={() => setSearchQuery('')} style={{ padding: 6 }} accessibilityLabel="Clear search">
+              <Text style={{ color: '#fff' }}>✖</Text>
+            </Pressable>
+          ) : null}
+        </View>
+      </View>
+
       <FlatList
-        data={tracks}
+        data={filteredTracks}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => {
           const artwork = item?.artwork;
@@ -303,8 +343,8 @@ export default function PlaylistDetailScreen({ route, navigation }) {
           );
         }}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={<Text style={styles.emptyText}>No tracks in this playlist</Text>}
-        contentContainerStyle={tracks.length === 0 ? styles.listEmptyContainer : null}
+        ListEmptyComponent={<Text style={styles.emptyText}>{queryLower ? 'No tracks match your search.' : 'No tracks in this playlist'}</Text>}
+        contentContainerStyle={filteredTracks.length === 0 ? styles.listEmptyContainer : null}
       />
 
       {/* Track kebab menu modal */}
