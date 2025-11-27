@@ -14,7 +14,47 @@ import {
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
 import styles, { colors } from './PlaylistsScreen.styles';
+import { SvgXml } from 'react-native-svg'; // added for bootstrap SVG icon rendering
 
+/* simple in-memory cache + helper to fetch and recolor remote SVGs */
+const svgCache = {};
+function RemoteSvgIcon({ uri, color = '#fff', width = 16, height = 16, style }) {
+  const [svgText, setSvgText] = useState(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (svgCache[uri]) {
+      setSvgText(svgCache[uri]);
+      return;
+    }
+    fetch(uri)
+      .then((res) => res.text())
+      .then((text) => {
+        if (!mounted) return;
+        svgCache[uri] = text;
+        setSvgText(text);
+      })
+      .catch((err) => {
+        console.warn('Failed to load SVG', uri, err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [uri]);
+
+  if (!svgText) return <View style={[{ width, height }, style]} />;
+
+  const colored = svgText
+    .replace(/fill="[^"]*"/gi, `fill="${color}"`)
+    .replace(/stroke="[^"]*"/gi, `stroke="${color}"`)
+    .replace(/fill='[^']*'/gi, `fill="${color}"`)
+    .replace(/stroke='[^']*'/gi, `stroke="${color}"`);
+
+  return <SvgXml xml={colored} width={width} height={height} style={style} />;
+}
+
+const BOOTSTRAP_ICONS_BASE = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons';
+const SEARCH_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/search.svg`;
 /* resolveArtworkUrl unchanged */
 function resolveArtworkUrl(artwork) {
   if (!artwork) return null;
@@ -320,7 +360,8 @@ export default function PlaylistsScreen({ navigation }) {
       {/* Search bar */}
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
-          <Text style={{ color: '#888', marginRight: 8 }}>🔍</Text>
+          {/* replaced Unicode search emoji with Bootstrap SVG icon */}
+          <RemoteSvgIcon uri={SEARCH_SVG_URL} color="#888" width={16} height={16} style={{ marginRight: 8 }} />
           <TextInput
             placeholder="Search playlists or tracks"
             placeholderTextColor="#888"

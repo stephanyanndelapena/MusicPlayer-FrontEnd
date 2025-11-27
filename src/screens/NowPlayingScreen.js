@@ -1,9 +1,59 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { View, Text, Image, TouchableOpacity, PanResponder } from 'react-native';
+import { SvgXml } from 'react-native-svg';
 import { usePlayer } from '../context/PlayerContext';
 import { incrementPlayCount } from '../utils/playCounts';
 import makeFullUrl from '../utils/makeFullUrl';
 import styles, { colors } from './NowPlayingScreen.styles';
+
+/**
+ * RemoteSvgIcon - fetches SVG markup from a URL once and caches it in-memory.
+ * Replace fill/stroke attributes at render time so color can be applied dynamically.
+ */
+function RemoteSvgIcon({ uri, color = '#fff', width = 22, height = 22, style }) {
+  const [svgText, setSvgText] = useState(null);
+
+  useEffect(() => {
+    let mounted = true;
+    // Fetch once per URI
+    fetch(uri)
+      .then((res) => res.text())
+      .then((text) => {
+        if (!mounted) return;
+        setSvgText(text);
+      })
+      .catch((err) => {
+        console.warn('Failed to load SVG', uri, err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [uri]);
+
+  if (!svgText) {
+    // empty placeholder while loading
+    return <View style={[{ width, height }, style]} />;
+  }
+
+  // Replace any explicit stroke/fill colors with the requested color.
+  // This is a simple approach; depending on the SVG you might need more robust transformations.
+  const colored = svgText
+    .replace(/fill="[^"]*"/gi, `fill="${color}"`)
+    .replace(/stroke="[^"]*"/gi, `stroke="${color}"`)
+    .replace(/fill='[^']*'/gi, `fill="${color}"`)
+    .replace(/stroke='[^']*'/gi, `stroke="${color}"`);
+
+  return <SvgXml xml={colored} width={width} height={height} style={style} />;
+}
+
+// CDN icon URLs (Bootstrap Icons via jsDelivr).
+// Using fill variants for the play/pause and skip icons so they render clearly on the colored play button.
+const SHUFFLE_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/shuffle.svg';
+const REPEAT_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/repeat.svg';
+const PLAY_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/play-fill.svg';
+const PAUSE_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/pause-fill.svg';
+const SKIP_START_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/skip-start-fill.svg';
+const SKIP_END_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/skip-end-fill.svg';
 
 export default function NowPlayingScreen({ navigation }) {
   const {
@@ -28,19 +78,17 @@ export default function NowPlayingScreen({ navigation }) {
   const [isDragging, setIsDragging] = useState(false);
   const [dragPct, setDragPct] = useState(null);
 
-  // Make header same color as body and remove bottom border/shadow (no white line)
   useEffect(() => {
     navigation.setOptions({
       title: 'Now Playing',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
-        elevation: 0, // Android: remove shadow
-        shadowOpacity: 0, // iOS: remove shadow
+        elevation: 0,
+        shadowOpacity: 0,
       },
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
-      // do not override headerLeft so native back button is used and tinted correctly
     });
   }, [navigation]);
 
@@ -53,7 +101,6 @@ export default function NowPlayingScreen({ navigation }) {
   }
 
   const artUri = currentTrack?.artwork ? makeFullUrl(currentTrack.artwork) : null;
-
   const progress = durationMillis ? (positionMillis / durationMillis) * 100 : 0;
 
   const format = (ms) => {
@@ -77,7 +124,6 @@ export default function NowPlayingScreen({ navigation }) {
     const pct = Math.max(0, Math.min(1, x / l.width));
     setIsDragging(true);
     setDragPct(pct);
-    // Continually update position while dragging
     seekTo(pct);
   };
 
@@ -90,7 +136,6 @@ export default function NowPlayingScreen({ navigation }) {
     }
     const x = ev.nativeEvent.locationX ?? 0;
     const pct = Math.max(0, Math.min(1, x / l.width));
-    // Final seek
     seekTo(pct);
     setIsDragging(false);
     setDragPct(null);
@@ -105,7 +150,6 @@ export default function NowPlayingScreen({ navigation }) {
       onPanResponderRelease: (evt) => handleDragEnd(evt),
       onPanResponderTerminate: (evt) => handleDragEnd(evt),
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [seekTo]);
 
   const handlePlayToggle = async () => {
@@ -121,13 +165,17 @@ export default function NowPlayingScreen({ navigation }) {
     }
   };
 
+  const iconColorFor = (active) => (active ? colors.accent || colors.textPrimary : colors.textSecondary);
+
+  // Memoize icon colors so strings passed into replace are stable
+  const shuffleColor = useMemo(() => iconColorFor(isShuffled), [isShuffled]);
+  const repeatColor = useMemo(() => iconColorFor(isRepeat), [isRepeat]);
+  const transportColor = useMemo(() => colors.controlIcon || colors.textPrimary, []);
+  const playIconColor = useMemo(() => colors.controlPrimaryIcon || '#fff', []);
+
   return (
     <View style={styles.container}>
-      {artUri ? (
-        <Image source={{ uri: artUri }} style={styles.art} />
-      ) : (
-        <View style={styles.artPlaceholder} />
-      )}
+      {artUri ? <Image source={{ uri: artUri }} style={styles.art} /> : <View style={styles.artPlaceholder} />}
 
       <Text style={styles.title} numberOfLines={2}>
         {currentTrack.title}
@@ -146,7 +194,9 @@ export default function NowPlayingScreen({ navigation }) {
           <View
             style={[
               styles.progressFill,
-              { width: `${Math.max(0, Math.min(100, isDragging && dragPct != null ? dragPct * 100 : progress))}%` },
+              {
+                width: `${Math.max(0, Math.min(100, isDragging && dragPct != null ? dragPct * 100 : progress))}%`,
+              },
             ]}
           />
         </View>
@@ -158,40 +208,38 @@ export default function NowPlayingScreen({ navigation }) {
       </View>
 
       <View style={styles.controlsRow}>
-        {/* Shuffle button */}
+        {/* Shuffle button - remote SVG */}
         <TouchableOpacity onPress={toggleShuffle} style={styles.transportButton} accessibilityLabel="Toggle shuffle">
-          <Text
-            style={[
-              styles.transportIcon,
-              { color: isShuffled ? (colors.textPrimary || '#fff') : (colors.textSecondary || '#9e9e9e') },
-            ]}
-          >
-            {isShuffled ? '🔀' : '🔁'}
-          </Text>
+          <RemoteSvgIcon uri={SHUFFLE_SVG_URL} color={shuffleColor} width={22} height={22} />
         </TouchableOpacity>
 
+        {/* Previous (skip start) */}
         <TouchableOpacity onPress={playPrev} style={styles.transportButton} accessibilityLabel="Previous track">
-          <Text style={styles.transportIcon}>⏮</Text>
+          <RemoteSvgIcon uri={SKIP_START_FILL_SVG_URL} color={transportColor} width={22} height={22} />
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={handlePlayToggle} style={styles.playBigButton} accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-          <Text style={styles.playBigIcon}>{isPlaying ? '⏸' : '▶'}</Text>
+        {/* Play / Pause (large button) */}
+        <TouchableOpacity
+          onPress={handlePlayToggle}
+          style={styles.playBigButton}
+          accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+        >
+          <RemoteSvgIcon
+            uri={isPlaying ? PAUSE_FILL_SVG_URL : PLAY_FILL_SVG_URL}
+            color={playIconColor}
+            width={28}
+            height={28}
+          />
         </TouchableOpacity>
 
+        {/* Next (skip end) */}
         <TouchableOpacity onPress={playNext} style={styles.transportButton} accessibilityLabel="Next track">
-          <Text style={styles.transportIcon}>⏭</Text>
+          <RemoteSvgIcon uri={SKIP_END_FILL_SVG_URL} color={transportColor} width={22} height={22} />
         </TouchableOpacity>
 
-        {/* Repeat (single-track) button - same style as prev/next */}
+        {/* Repeat button - remote SVG */}
         <TouchableOpacity onPress={toggleRepeat} style={styles.transportButton} accessibilityLabel={isRepeat ? 'Repeat on' : 'Repeat off'}>
-          <Text
-            style={[
-              styles.transportIcon,
-              { color: isRepeat ? (colors.textPrimary || '#fff') : (colors.textSecondary || '#9e9e9e') },
-            ]}
-          >
-            {isRepeat ? '🔂' : '⟳'}
-          </Text>
+          <RemoteSvgIcon uri={REPEAT_SVG_URL} color={repeatColor} width={22} height={22} />
         </TouchableOpacity>
       </View>
     </View>

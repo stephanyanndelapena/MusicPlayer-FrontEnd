@@ -1,7 +1,56 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../context/PlayerContext';
+import { SvgXml } from 'react-native-svg';
+
+// simple in-memory cache for fetched SVGs
+const svgCache = {};
+function RemoteSvgIcon({ uri, color = '#fff', width = 18, height = 18, style }) {
+  const [svgText, setSvgText] = React.useState(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (svgCache[uri]) {
+      setSvgText(svgCache[uri]);
+      return;
+    }
+    fetch(uri)
+      .then((res) => res.text())
+      .then((text) => {
+        if (!mounted) return;
+        svgCache[uri] = text;
+        setSvgText(text);
+      })
+      .catch((err) => {
+        console.warn('Failed to load SVG', uri, err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [uri]);
+
+  if (!svgText) return <View style={[{ width, height }, style]} />;
+
+  const colored = svgText
+    .replace(/fill="[^"]*"/gi, `fill="${color}"`)
+    .replace(/stroke="[^"]*"/gi, `stroke="${color}"`)
+    .replace(/fill='[^']*'/gi, `fill="${color}"`)
+    .replace(/stroke='[^']*'/gi, `stroke="${color}"`);
+
+  return <SvgXml xml={colored} width={width} height={height} style={style} />;
+}
+
+const BOOTSTRAP_ICONS_BASE = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons';
+const SHUFFLE_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/shuffle.svg`;
+const REPEAT_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/repeat.svg`;
+const PLAY_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/play-fill.svg`;
+const PAUSE_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/pause-fill.svg`;
+const SKIP_START_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/skip-start-fill.svg`;
+const SKIP_END_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/skip-end-fill.svg`;
+
+// Inline accent so we don't rely on resolving the styles file
+const ACCENT_GREEN = '#1DB954';
 
 export default function NowPlayingModal() {
   const navigation = useNavigation();
@@ -35,19 +84,24 @@ export default function NowPlayingModal() {
     return `${mm}:${ss.toString().padStart(2, '0')}`;
   };
 
+  const inactiveColor = '#d6d6d6';
+  const activeColor = ACCENT_GREEN; // use inline accent
+  const playBtnIconColor = '#000000';
+
+  const shuffleColor = useMemo(() => (isShuffled ? activeColor : inactiveColor), [isShuffled]);
+  const repeatColor = useMemo(() => (isRepeat ? activeColor : inactiveColor), [isRepeat]);
+  const transportColor = inactiveColor;
+
   return (
     <TouchableOpacity
       style={styles.container}
       activeOpacity={0.95}
-      onPress={() => navigation.navigate("NowPlaying")}
+      onPress={() => navigation.navigate('NowPlaying')}
     >
       <View style={styles.row}>
         <View style={styles.left}>
           {currentTrack?.artwork ? (
-            <Image
-              source={{ uri: currentTrack.artwork }}
-              style={styles.thumb}
-            />
+            <Image source={{ uri: currentTrack.artwork }} style={styles.thumb} />
           ) : (
             <View style={styles.thumbPlaceholder} />
           )}
@@ -63,45 +117,27 @@ export default function NowPlayingModal() {
         </View>
 
         <View style={styles.controls}>
-          <TouchableOpacity
-            onPress={() => toggleShuffle()}
-            style={styles.iconButton}
-          >
-            <Text style={[styles.icon, isShuffled && styles.iconActive]}>
-              {isShuffled ? "🔀" : "🔁"}
-            </Text>
+          <TouchableOpacity onPress={() => toggleShuffle()} style={styles.iconButton}>
+            {/* direct color change when active, no circle badge */}
+            <RemoteSvgIcon uri={SHUFFLE_SVG_URL} color={shuffleColor} width={16} height={16} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => playPrev()}
-            style={styles.iconButton}
-          >
-            <Text style={styles.icon}>⏮</Text>
+          <TouchableOpacity onPress={() => playPrev()} style={styles.iconButton}>
+            <RemoteSvgIcon uri={SKIP_START_FILL_SVG_URL} color={transportColor} width={18} height={18} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => (isPlaying ? pause() : play(currentTrack))}
-            style={styles.playButton}
-          >
-            <Text style={styles.playIcon}>{isPlaying ? "⏸" : "▶"}</Text>
+          <TouchableOpacity onPress={() => (isPlaying ? pause() : play(currentTrack))} style={styles.playButton}>
+            <RemoteSvgIcon uri={isPlaying ? PAUSE_FILL_SVG_URL : PLAY_FILL_SVG_URL} color={playBtnIconColor} width={20} height={20} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => playNext()}
-            style={styles.iconButton}
-          >
-            <Text style={styles.icon}>⏭</Text>
+          <TouchableOpacity onPress={() => playNext()} style={styles.iconButton}>
+            <RemoteSvgIcon uri={SKIP_END_FILL_SVG_URL} color={transportColor} width={18} height={18} />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            onPress={() => toggleRepeat()}
-            style={styles.iconButton}
-          >
-            <Text style={[styles.icon, isRepeat && styles.iconActive]}>
-              {isRepeat ? '🔂' : '⟳'}
-            </Text>
+          <TouchableOpacity onPress={() => toggleRepeat()} style={styles.iconButton}>
+            {/* direct color change when active, no circle badge */}
+            <RemoteSvgIcon uri={REPEAT_SVG_URL} color={repeatColor} width={16} height={16} />
           </TouchableOpacity>
-
         </View>
       </View>
 
@@ -112,9 +148,7 @@ export default function NowPlayingModal() {
             style={[
               styles.progressFill,
               {
-                width: durationMillis
-                  ? `${(positionMillis / durationMillis) * 100}%`
-                  : "0%",
+                width: durationMillis ? `${(positionMillis / durationMillis) * 100}%` : '0%',
               },
             ]}
           />
@@ -122,7 +156,6 @@ export default function NowPlayingModal() {
         <Text style={styles.timeTextRight}>{format(durationMillis)}</Text>
       </View>
     </TouchableOpacity>
-
   );
 }
 
@@ -187,13 +220,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     paddingVertical: 6,
   },
-  icon: {
-    color: '#d6d6d6',
-    fontSize: 16,
-  },
-  iconActive: {
-    color: '#fff',
-  },
 
   playButton: {
     marginHorizontal: 8,
@@ -204,11 +230,6 @@ const styles = StyleSheet.create({
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  playIcon: {
-    color: '#000',
-    fontWeight: '700',
-    fontSize: 16,
   },
 
   progressRow: {
