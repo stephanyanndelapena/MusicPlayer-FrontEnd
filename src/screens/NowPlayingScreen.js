@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, PanResponder } from 'react-native';
+import { View, Text, Image, TouchableOpacity, PanResponder, Pressable } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { usePlayer } from '../context/PlayerContext';
 import { incrementPlayCount } from '../utils/playCounts';
@@ -54,6 +54,9 @@ const PLAY_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/i
 const PAUSE_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/pause-fill.svg';
 const SKIP_START_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/skip-start-fill.svg';
 const SKIP_END_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/skip-end-fill.svg';
+// Volume icons
+const VOLUME_UP_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-up-fill.svg';
+const VOLUME_MUTE_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-mute-fill.svg';
 
 export default function NowPlayingScreen({ navigation }) {
   const {
@@ -70,6 +73,8 @@ export default function NowPlayingScreen({ navigation }) {
     toggleShuffle,
     isRepeat,
     toggleRepeat,
+    volume,
+    setVolume,
   } = usePlayer();
 
   const [layout, setLayout] = useState(null);
@@ -77,6 +82,12 @@ export default function NowPlayingScreen({ navigation }) {
   const panResponder = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPct, setDragPct] = useState(null);
+  // Volume UI state
+  const [isVolumeOpen, setIsVolumeOpen] = useState(false);
+  const volLayoutRef = useRef(null);
+  const volPanResponder = useRef(null);
+  const [isVolDragging, setIsVolDragging] = useState(false);
+  const [volDragPct, setVolDragPct] = useState(null);
 
   useEffect(() => {
     navigation.setOptions({
@@ -117,6 +128,11 @@ export default function NowPlayingScreen({ navigation }) {
     layoutRef.current = l;
   };
 
+  const onVolumeLayout = (ev) => {
+    const l = ev.nativeEvent.layout;
+    volLayoutRef.current = l;
+  };
+
   const handleDrag = (ev) => {
     const l = layoutRef.current;
     if (!l) return;
@@ -152,6 +168,17 @@ export default function NowPlayingScreen({ navigation }) {
     });
   }, [seekTo]);
 
+  useEffect(() => {
+    volPanResponder.current = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => handleVolDrag(evt),
+      onPanResponderMove: (evt) => handleVolDrag(evt),
+      onPanResponderRelease: (evt) => handleVolDragEnd(evt),
+      onPanResponderTerminate: (evt) => handleVolDragEnd(evt),
+    });
+  }, [setVolume]);
+
   const handlePlayToggle = async () => {
     if (isPlaying) {
       pause();
@@ -172,6 +199,38 @@ export default function NowPlayingScreen({ navigation }) {
   const repeatColor = useMemo(() => iconColorFor(isRepeat), [isRepeat]);
   const transportColor = useMemo(() => colors.controlIcon || colors.textPrimary, []);
   const playIconColor = useMemo(() => colors.controlPrimaryIcon || '#fff', []);
+
+  const onVolPressToggle = () => {
+    // Toggle for touch devices
+    setIsVolumeOpen((s) => !s);
+  };
+
+  const isMuted = (typeof volume === 'number' ? volume <= 0.001 : false);
+
+  const handleVolDrag = (ev) => {
+    const l = volLayoutRef.current;
+    if (!l) return;
+    // horizontal slider: use locationX and width
+    const x = ev.nativeEvent.locationX ?? 0;
+    const pct = Math.max(0, Math.min(1, x / l.width));
+    setIsVolDragging(true);
+    setVolDragPct(pct);
+    if (setVolume) setVolume(pct);
+  };
+
+  const handleVolDragEnd = (ev) => {
+    const l = volLayoutRef.current;
+    if (!l) {
+      setIsVolDragging(false);
+      setVolDragPct(null);
+      return;
+    }
+    const x = ev.nativeEvent.locationX ?? 0;
+    const pct = Math.max(0, Math.min(1, x / l.width));
+    if (setVolume) setVolume(pct);
+    setIsVolDragging(false);
+    setVolDragPct(null);
+  };
 
   return (
     <View style={styles.container}>
@@ -241,6 +300,26 @@ export default function NowPlayingScreen({ navigation }) {
         <TouchableOpacity onPress={toggleRepeat} style={styles.transportButton} accessibilityLabel={isRepeat ? 'Repeat on' : 'Repeat off'}>
           <RemoteSvgIcon uri={REPEAT_SVG_URL} color={repeatColor} width={22} height={22} />
         </TouchableOpacity>
+
+        {/* Volume control (hover shows slider on web; press toggles on touch) */}
+        <View style={styles.volumeWrap}>
+          <Pressable onPress={onVolPressToggle} style={styles.volumeButton} accessibilityLabel={isMuted ? 'Muted' : 'Volume'}>
+            <RemoteSvgIcon uri={isMuted ? VOLUME_MUTE_SVG_URL : VOLUME_UP_SVG_URL} color={transportColor} width={20} height={20} />
+          </Pressable>
+
+          {isVolumeOpen ? (
+            <View
+              style={styles.volumeSliderWrap}
+              onLayout={onVolumeLayout}
+              onStartShouldSetResponder={() => true}
+              {...(volPanResponder.current ? volPanResponder.current.panHandlers : {})}
+            >
+              <View style={styles.volumeSliderBackground}>
+                <View style={[styles.volumeSliderFill, { width: `${Math.max(0, Math.min(100, isVolDragging && volDragPct != null ? volDragPct * 100 : (volume || 0) * 100))}%` }]} />
+              </View>
+            </View>
+          ) : null}
+        </View>
       </View>
     </View>
   );

@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import React, { useMemo, useEffect, useState, useRef } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Image, PanResponder, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../context/PlayerContext';
 import { SvgXml } from 'react-native-svg';
@@ -48,6 +48,9 @@ const PLAY_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/play-fill.svg`;
 const PAUSE_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/pause-fill.svg`;
 const SKIP_START_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/skip-start-fill.svg`;
 const SKIP_END_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/skip-end-fill.svg`;
+// Volume icons
+const VOLUME_UP_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-up-fill.svg';
+const VOLUME_MUTE_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-mute-fill.svg';
 
 // Inline accent so we don't rely on resolving the styles file
 const ACCENT_GREEN = '#1DB954';
@@ -67,6 +70,8 @@ export default function NowPlayingModal() {
     toggleShuffle,
     isRepeat,
     toggleRepeat,
+    volume,
+    setVolume,
   } = usePlayer();
 
   if (!currentTrack) return null;
@@ -84,6 +89,12 @@ export default function NowPlayingModal() {
     return `${mm}:${ss.toString().padStart(2, '0')}`;
   };
 
+  
+  const onVolumeLayout = (ev) => {
+    const l = ev.nativeEvent.layout;
+    volLayoutRef.current = l;
+  };
+
   const inactiveColor = '#d6d6d6';
   const activeColor = ACCENT_GREEN; // use inline accent
   const playBtnIconColor = '#000000';
@@ -92,29 +103,83 @@ export default function NowPlayingModal() {
   const repeatColor = useMemo(() => (isRepeat ? activeColor : inactiveColor), [isRepeat]);
   const transportColor = inactiveColor;
 
-  return (
-    <TouchableOpacity
-      style={styles.container}
-      activeOpacity={0.95}
-      onPress={() => navigation.navigate('NowPlaying')}
-    >
-      <View style={styles.row}>
-        <View style={styles.left}>
-          {currentTrack?.artwork ? (
-            <Image source={{ uri: currentTrack.artwork }} style={styles.thumb} />
-          ) : (
-            <View style={styles.thumbPlaceholder} />
-          )}
-        </View>
+  // Volume UI state
+  const [isVolumeOpen, setIsVolumeOpen] = useState(false);
+  const volLayoutRef = useRef(null);
+  const volPanResponder = useRef(null);
+  const [isVolDragging, setIsVolDragging] = useState(false);
+  const [volDragPct, setVolDragPct] = useState(null);
 
-        <View style={styles.meta}>
-          <Text style={styles.title} numberOfLines={1}>
-            {currentTrack.title}
-          </Text>
-          <Text style={styles.artist} numberOfLines={1}>
-            {currentTrack.artist}
-          </Text>
-        </View>
+  
+  useEffect(() => {
+    volPanResponder.current = PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => handleVolDrag(evt),
+      onPanResponderMove: (evt) => handleVolDrag(evt),
+      onPanResponderRelease: (evt) => handleVolDragEnd(evt),
+      onPanResponderTerminate: (evt) => handleVolDragEnd(evt),
+    });
+  }, [setVolume]);
+
+  
+  const onVolPressToggle = () => {
+    // Toggle for touch devices
+    setIsVolumeOpen((s) => !s);
+  };
+
+  const isMuted = (typeof volume === 'number' ? volume <= 0.001 : false);
+
+  const handleVolDrag = (ev) => {
+    const l = volLayoutRef.current;
+    if (!l) return;
+    // vertical slider: use locationY and height. top => max volume, bottom => min.
+    const y = ev.nativeEvent.locationY ?? 0;
+    const pct = Math.max(0, Math.min(1, 1 - y / l.height));
+    setIsVolDragging(true);
+    setVolDragPct(pct);
+    if (setVolume) setVolume(pct);
+  };
+
+  const handleVolDragEnd = (ev) => {
+    const l = volLayoutRef.current;
+    if (!l) {
+      setIsVolDragging(false);
+      setVolDragPct(null);
+      return;
+    }
+    const y = ev.nativeEvent.locationY ?? 0;
+    const pct = Math.max(0, Math.min(1, 1 - y / l.height));
+    if (setVolume) setVolume(pct);
+    setIsVolDragging(false);
+    setVolDragPct(null);
+  };
+
+  return (
+    <View style={styles.container}>
+      <View style={styles.row}>
+        <TouchableOpacity
+          style={{ flexDirection: 'row', alignItems: 'center', flex: 1 }}
+          activeOpacity={0.95}
+          onPress={() => navigation.navigate('NowPlaying')}
+        >
+          <View style={styles.left}>
+            {currentTrack?.artwork ? (
+              <Image source={{ uri: currentTrack.artwork }} style={styles.thumb} />
+            ) : (
+              <View style={styles.thumbPlaceholder} />
+            )}
+          </View>
+
+          <View style={styles.meta}>
+            <Text style={styles.title} numberOfLines={1}>
+              {currentTrack.title}
+            </Text>
+            <Text style={styles.artist} numberOfLines={1}>
+              {currentTrack.artist}
+            </Text>
+          </View>
+        </TouchableOpacity>
 
         <View style={styles.controls}>
           <TouchableOpacity onPress={() => toggleShuffle()} style={styles.iconButton}>
@@ -138,6 +203,27 @@ export default function NowPlayingModal() {
             {/* direct color change when active, no circle badge */}
             <RemoteSvgIcon uri={REPEAT_SVG_URL} color={repeatColor} width={16} height={16} />
           </TouchableOpacity>
+
+          {/* Volume control (hover shows slider on web; press toggles on touch) */}
+          <View style={styles.volumeWrap}>
+            <Pressable onPress={onVolPressToggle} style={styles.volumeButton} accessibilityLabel={isMuted ? 'Muted' : 'Volume'}>
+              <RemoteSvgIcon uri={isMuted ? VOLUME_MUTE_SVG_URL : VOLUME_UP_SVG_URL} color={transportColor} width={20} height={20} />
+            </Pressable>
+
+            {isVolumeOpen ? (
+              <View
+                style={styles.volumeSliderWrap}
+                onLayout={onVolumeLayout}
+                onStartShouldSetResponder={() => true}
+                {...(volPanResponder.current ? volPanResponder.current.panHandlers : {})}
+              >
+                <View style={styles.volumeSliderBackground}>
+                  <View style={[styles.volumeSliderFill, { height: `${Math.max(0, Math.min(100, isVolDragging && volDragPct != null ? volDragPct * 100 : (volume || 0) * 100))}%` }]} />
+                </View>
+              </View>
+            ) : null}
+          </View>
+          
         </View>
       </View>
 
@@ -155,7 +241,7 @@ export default function NowPlayingModal() {
         </View>
         <Text style={styles.timeTextRight}>{format(durationMillis)}</Text>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -260,5 +346,51 @@ const styles = StyleSheet.create({
   progressFill: {
     height: 4,
     backgroundColor: '#fff',
+  },
+  // Volume control (overlay anchored to the volume button)
+  volumeWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginRight: 6,
+  },
+  volumeButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  volumeSliderWrap: {
+    position: 'absolute',
+    bottom: 56,
+    right: 1,
+    width: 36,
+    height: 140,
+    padding: 8,
+    backgroundColor: '#0b0b0b',
+    borderRadius: 8,
+    elevation: 6,
+    zIndex: 9999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // vertical track
+  volumeSliderBackground: {
+    width: 6,
+    height: '100%',
+    backgroundColor: '#333',
+    borderRadius: 4,
+    overflow: 'hidden',
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'flex-end',
+  },
+  // fill that grows from bottom up
+  volumeSliderFill: {
+    width: '100%',
+    backgroundColor: ACCENT_GREEN,
+    position: 'absolute',
+    bottom: 0,
   },
 });

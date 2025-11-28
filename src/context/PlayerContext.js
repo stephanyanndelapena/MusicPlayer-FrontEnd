@@ -29,6 +29,8 @@ export function PlayerProvider({ children }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [positionMillis, setPositionMillis] = useState(0);
   const [durationMillis, setDurationMillis] = useState(0);
+  // Volume (0.0 - 1.0)
+  const [volume, setVolumeState] = useState(1);
 
   useEffect(() => {
     return () => {
@@ -51,6 +53,19 @@ export function PlayerProvider({ children }) {
       }
     } catch (e) {
       console.warn('stopAndUnload error', e);
+    }
+  };
+
+  // Public setter that updates local state and active sound volume when possible
+  const setVolume = async (v) => {
+    try {
+      const val = Math.max(0, Math.min(1, Number(v) || 0));
+      setVolumeState(val);
+      if (soundRef.current && soundRef.current.setVolumeAsync) {
+        await soundRef.current.setVolumeAsync(val);
+      }
+    } catch (e) {
+      console.warn('setVolume error', e);
     }
   };
 
@@ -347,6 +362,14 @@ export function PlayerProvider({ children }) {
       }
 
       const loadedStatus = await sound.loadAsync({ uri }, { shouldPlay: true });
+      // Apply saved volume preference immediately after load if available
+      try {
+        if (typeof volume === 'number' && sound.setVolumeAsync) {
+          await sound.setVolumeAsync(volume);
+        }
+      } catch (e) {
+        // non-fatal
+      }
       // Apply repeat/looping preference immediately after load
       try {
         if (sound.setIsLoopingAsync) {
@@ -553,6 +576,8 @@ export function PlayerProvider({ children }) {
         toggleShuffle,
         isRepeat,
         toggleRepeat,
+        volume,
+        setVolume,
       }}
     >
       {children}

@@ -133,6 +133,47 @@ export default StyleSheet.create({
     shadowRadius: 6,
     elevation: 6,
   },
+  // Volume control
+  // Volume control (right-side vertical overlay)
+  volumeWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  volumeButton: {
+    padding: 10,
+    borderRadius: 8,
+    backgroundColor: colors.controlButtonBackground,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // horizontal overlay anchored to the right side
+  volumeSliderWrap: {
+    position: 'absolute',
+    right: -135,
+    top: '1%',
+    width: 140,
+    height: 40,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    elevation: 6,
+    zIndex: 9999,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  volumeSliderBackground: {
+    height: 6,
+    width: '100%',
+    backgroundColor: colors.muted,
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  volumeSliderFill: {
+    height: 6,
+    backgroundColor: colors.accent,
+  },
   playBigIcon: {
     fontSize: 28,
     color: colors.controlPrimaryIcon, // separated token
