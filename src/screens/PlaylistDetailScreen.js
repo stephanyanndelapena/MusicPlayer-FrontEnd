@@ -114,15 +114,28 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   // local tracks and search (declare hooks unconditionally at top-level of component)
   const tracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
   const [searchQuery, setSearchQuery] = useState('');
+  const [trackFilter, setTrackFilter] = useState('recent'); // 'recent' | 'title' | 'artist'
   const queryLower = (searchQuery || '').trim().toLowerCase();
   const filteredTracks = useMemo(() => {
-    if (!queryLower) return tracks;
-    return (tracks || []).filter((t) => {
+    const base = (tracks || []).filter((t) => {
+      if (!queryLower) return true;
       const title = (t.title || '').toLowerCase();
       const artist = (t.artist || '').toLowerCase();
       return title.includes(queryLower) || artist.includes(queryLower);
     });
-  }, [tracks, queryLower]);
+
+    const sorted = [...base];
+    if (trackFilter === 'title') {
+      sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (trackFilter === 'artist') {
+      sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
+    } else {
+      // 'recent' fallback: assume higher id is newer when no created_at available
+      sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+
+    return sorted;
+  }, [tracks, queryLower, trackFilter]);
 
   const togglePlayFor = async (track) => {
     try {
@@ -324,6 +337,36 @@ export default function PlaylistDetailScreen({ route, navigation }) {
             </Pressable>
           ) : null}
         </View>
+      </View>
+
+      {/* Filter controls for this playlist: Recently added / Title A–Z / Artist A–Z */}
+      <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
+        {[
+          { key: 'recent', label: 'Recently added' },
+          { key: 'title', label: 'Title A–Z' },
+          { key: 'artist', label: 'Artist A–Z' },
+        ].map((opt) => {
+          const selected = trackFilter === opt.key;
+          return (
+            <Pressable
+              key={opt.key}
+              onPress={() => setTrackFilter(opt.key)}
+              style={({ pressed }) => [
+                {
+                  paddingVertical: 6,
+                  paddingHorizontal: 10,
+                  borderRadius: 6,
+                  marginRight: 8,
+                  backgroundColor: selected ? colors.accent : pressed ? '#333' : 'transparent',
+                },
+              ]}
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+            >
+              <Text style={{ color: selected ? '#000' : '#ccc', fontSize: 13 }}>{opt.label}</Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       <FlatList

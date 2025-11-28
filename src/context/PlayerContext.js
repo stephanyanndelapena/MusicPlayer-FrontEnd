@@ -1,3 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+const VOLUME_STORAGE_KEY = 'player:volume';
+
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Audio } from 'expo-av';
 import api from '../api';
@@ -33,6 +37,30 @@ export function PlayerProvider({ children }) {
   const [volume, setVolumeState] = useState(1);
 
   useEffect(() => {
+    // On mount: load persisted volume preference (if any)
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(VOLUME_STORAGE_KEY);
+        if (stored != null) {
+          const num = Number(stored);
+          if (!Number.isNaN(num)) {
+            const clamped = Math.max(0, Math.min(1, num));
+            setVolumeState(clamped);
+            // If a sound is already loaded, apply immediately
+            try {
+              if (soundRef.current && soundRef.current.setVolumeAsync) {
+                await soundRef.current.setVolumeAsync(clamped);
+              }
+            } catch (e) {
+              // non-fatal
+            }
+          }
+        }
+      } catch (e) {
+        // ignore storage errors
+      }
+    })();
+
     return () => {
       stopAndUnload();
       if (positionTimerRef.current) {
@@ -63,6 +91,12 @@ export function PlayerProvider({ children }) {
       setVolumeState(val);
       if (soundRef.current && soundRef.current.setVolumeAsync) {
         await soundRef.current.setVolumeAsync(val);
+      }
+      // persist preference
+      try {
+        await AsyncStorage.setItem(VOLUME_STORAGE_KEY, String(val));
+      } catch (e) {
+        // ignore storage errors
       }
     } catch (e) {
       console.warn('setVolume error', e);

@@ -149,6 +149,7 @@ export default function AllTracksScreen() {
 
   // Search / filter state (re-use PlaylistsScreen search UI & behavior)
   const [searchQuery, setSearchQuery] = useState('');
+  const [trackFilter, setTrackFilter] = useState('recent'); // 'recent' | 'title' | 'artist'
 
   // Modal / playlists for adding a track
   const [playlists, setPlaylists] = useState([]);
@@ -236,16 +237,29 @@ export default function AllTracksScreen() {
     }
   };
 
-  // Filtered tracks using search query
+  // Filtered tracks using search query + sorting by selected filter
   const queryLower = (searchQuery || '').trim().toLowerCase();
   const filteredTracks = useMemo(() => {
-    if (!queryLower) return tracks;
-    return (tracks || []).filter((t) => {
+    const base = (tracks || []).filter((t) => {
+      if (!queryLower) return true;
       const title = (t.title || '').toLowerCase();
       const artist = (t.artist || '').toLowerCase();
       return title.includes(queryLower) || artist.includes(queryLower);
     });
-  }, [tracks, queryLower]);
+
+    // Apply sorting based on selected filter
+    const sorted = [...base];
+    if (trackFilter === 'title') {
+      sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+    } else if (trackFilter === 'artist') {
+      sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
+    } else {
+      // 'recent' fallback: assume higher id is newer when no created_at available
+      sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
+    }
+
+    return sorted;
+  }, [tracks, queryLower, trackFilter]);
 
   const handlePlay = useCallback(
     async (item, index) => {
@@ -306,6 +320,36 @@ export default function AllTracksScreen() {
           </View>
         </View>
       </View>
+
+        {/* Filter controls: Recently added / Title A–Z / Artist A–Z */}
+        <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
+          {[
+            { key: 'recent', label: 'Recently added' },
+            { key: 'title', label: 'Title A–Z' },
+            { key: 'artist', label: 'Artist A–Z' },
+          ].map((opt) => {
+            const selected = trackFilter === opt.key;
+            return (
+              <Pressable
+                key={opt.key}
+                onPress={() => setTrackFilter(opt.key)}
+                style={({ pressed }) => [
+                  {
+                    paddingVertical: 6,
+                    paddingHorizontal: 10,
+                    borderRadius: 6,
+                    marginRight: 8,
+                    backgroundColor: selected ? colors.accent : pressed ? '#333' : 'transparent',
+                  },
+                ]}
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+              >
+                <Text style={{ color: selected ? '#000' : '#ccc', fontSize: 13 }}>{opt.label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
       {filteredTracks.length === 0 ? (
         <View style={[styles.center, { backgroundColor: colors.background }]}>
