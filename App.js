@@ -11,7 +11,7 @@ import TrackFormScreen from './src/screens/TrackFormScreen';
 import PlaylistFormScreen from './src/screens/PlaylistFormScreen';
 import NowPlayingScreen from './src/screens/NowPlayingScreen';
 import MostPlayedScreen from './src/screens/MostPlayedScreen';
-
+import AllTracksScreen from './src/screens/AllTracksScreen';
 const Stack = createNativeStackNavigator();
 
 export default function App() {
@@ -26,6 +26,7 @@ export default function App() {
           <Stack.Screen name="PlaylistForm" component={PlaylistFormScreen} />
           <Stack.Screen name="NowPlaying" component={NowPlayingScreen} />
           <Stack.Screen name="MostPlayed" component={MostPlayedScreen} />
+          <Stack.Screen name="AllTracks" component={AllTracksScreen} options={{ title: 'All Tracks' }} />
         </Stack.Navigator>
 
         {/* Global Now Playing mini-player, visible over all screens */}

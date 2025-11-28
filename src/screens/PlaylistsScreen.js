@@ -351,6 +351,11 @@ export default function PlaylistsScreen({ navigation }) {
             <OutlinedButton title="Add Song" onPress={() => navigation.navigate('TrackForm')} color={colors.accent} />
           </View>
 
+          {/* ADDED: All Tracks button placed between Add Song and Most Played */}
+          <View style={styles.smallButton}>
+            <OutlinedButton title="All Tracks" onPress={() => navigation.navigate('AllTracks')} color={colors.accent} />
+          </View>
+
           <View style={styles.smallButton}>
             <OutlinedButton title="Most Played" onPress={() => navigation.navigate('MostPlayed')} color={colors.accent} />
           </View>
