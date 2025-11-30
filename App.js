@@ -4,7 +4,6 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { PlayerProvider } from './src/context/PlayerContext';
 import NowPlayingModal from './src/components/NowPlayingModal';
 
-// Import your existing screens
 import PlaylistsScreen from './src/screens/PlaylistsScreen';
 import PlaylistDetailScreen from './src/screens/PlaylistDetailScreen';
 import TrackFormScreen from './src/screens/TrackFormScreen';
@@ -29,7 +28,6 @@ export default function App() {
           <Stack.Screen name="AllTracks" component={AllTracksScreen} options={{ title: 'All Tracks' }} />
         </Stack.Navigator>
 
-        {/* Global Now Playing mini-player, visible over all screens */}
         <NowPlayingModal />
       </NavigationContainer>
     </PlayerProvider>

@@ -17,7 +17,6 @@ import { usePlayer } from '../context/PlayerContext';
 import styles, { colors } from './PlaylistsScreen.styles';
 import { SvgXml } from 'react-native-svg';
 
-/* RemoteSvgIcon and search icon (copied from PlaylistsScreen) */
 const BOOTSTRAP_ICONS_BASE = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons';
 const SEARCH_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/search.svg`;
 const svgCache = {};
@@ -56,7 +55,6 @@ function RemoteSvgIcon({ uri, color = '#fff', width = 16, height = 16, style }) 
   return <SvgXml xml={colored} width={width} height={height} style={style} />;
 }
 
-/* resolveArtworkUrl copied from PlaylistsScreen for identical behavior */
 function resolveArtworkUrl(artwork) {
   if (!artwork) return null;
   if (artwork.startsWith('http://') || artwork.startsWith('https://')) return artwork;
@@ -68,7 +66,6 @@ function resolveArtworkUrl(artwork) {
   return `http://127.0.0.1:8000${path}`;
 }
 
-/* Artwork component (same as PlaylistsScreen) */
 const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderStyle }) {
   const uri = useMemo(() => (artwork ? resolveArtworkUrl(artwork) : null), [artwork]);
   const source = useMemo(() => (uri ? { uri } : null), [uri]);
@@ -80,7 +77,6 @@ const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderSt
   return <Image source={source} style={imageStyle || styles.trackThumb} />;
 });
 
-/* Track row with hover and add-to-playlist button (matches PlaylistsScreen features) */
 function TrackRow({ item, index, onPlay, onAddToPlaylist }) {
   const [hovered, setHovered] = useState(false);
 
@@ -127,7 +123,6 @@ function TrackRow({ item, index, onPlay, onAddToPlaylist }) {
 export default function AllTracksScreen() {
   const navigation = useNavigation();
 
-  // set native stack header (top bar) to black background + white text
   useEffect(() => {
     navigation.setOptions({
       headerStyle: {
@@ -147,11 +142,9 @@ export default function AllTracksScreen() {
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Search / filter state (re-use PlaylistsScreen search UI & behavior)
   const [searchQuery, setSearchQuery] = useState('');
-  const [trackFilter, setTrackFilter] = useState('recent'); // 'recent' | 'title' | 'artist'
+  const [trackFilter, setTrackFilter] = useState('recent');
 
-  // Modal / playlists for adding a track
   const [playlists, setPlaylists] = useState([]);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
@@ -219,7 +212,6 @@ export default function AllTracksScreen() {
       }
       existing.push(selectedTrackToAdd.id);
       await api.patch(`/playlists/${playlist.id}/`, { track_ids: existing });
-      // refresh playlists & tracks to reflect changes
       await Promise.all([
         fetchPlaylists(),
         (async () => {
@@ -237,7 +229,6 @@ export default function AllTracksScreen() {
     }
   };
 
-  // Filtered tracks using search query + sorting by selected filter
   const queryLower = (searchQuery || '').trim().toLowerCase();
   const filteredTracks = useMemo(() => {
     const base = (tracks || []).filter((t) => {
@@ -247,14 +238,12 @@ export default function AllTracksScreen() {
       return title.includes(queryLower) || artist.includes(queryLower);
     });
 
-    // Apply sorting based on selected filter
     const sorted = [...base];
     if (trackFilter === 'title') {
       sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     } else if (trackFilter === 'artist') {
       sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
     } else {
-      // 'recent' fallback: assume higher id is newer when no created_at available
       sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
     }
 
@@ -292,7 +281,6 @@ export default function AllTracksScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.background }]}>
-      {/* Header: black background (native header already set), but keep in-screen header row too */}
       <View style={styles.headerRow}>
         <View>
           <Text style={[styles.headerTitle, { color: '#fff' }]}>All Tracks</Text>
@@ -321,7 +309,6 @@ export default function AllTracksScreen() {
         </View>
       </View>
 
-        {/* Filter controls: Recently added / Title A–Z / Artist A–Z */}
         <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
           {[
             { key: 'recent', label: 'Recently added' },
@@ -388,7 +375,6 @@ export default function AllTracksScreen() {
             )}
 
             <View style={{ marginTop: 12 }}>
-              {/* UPDATED: set borderColor to match cancel text (colors.accent) */}
               <TouchableOpacity
                 onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }}
                 style={[styles.outlinedButton, { borderColor: colors.accent }]}

@@ -1,7 +1,6 @@
 import { StyleSheet } from 'react-native';
 import { colors as playlistColors } from './PlaylistsScreen.styles';
 
-// Reuse the app's playlist color tokens so AllTracks matches PlaylistsScreen
 const c = {
   background: playlistColors.background,
   surface: playlistColors.surface,
@@ -18,27 +17,25 @@ export default StyleSheet.create({
     paddingTop: 8,
   },
 
-  // Header row to match PlaylistsScreen but with black background + white text
   headerRow: {
     padding: 16,
     paddingTop: 22,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#000', // forced black
+    backgroundColor: '#000',
     borderBottomWidth: 1,
-    borderBottomColor: '#000', // match black header
+    borderBottomColor: '#000',
   },
 
-  // Keep headerTitle and headerSubtitle white
   headerTitle: {
-    color: '#ffffffff', // white text
+    color: '#ffffffff',
     fontSize: 20,
     fontWeight: '700',
     marginBottom: 2,
   },
   headerSubtitle: {
-    color: '#FFFFFF', // white text
+    color: '#FFFFFF',
     fontSize: 12,
   },
 
@@ -55,11 +52,11 @@ export default StyleSheet.create({
     paddingHorizontal: 12,
     backgroundColor: c.surface,
   },
-  // Hover / pressed state similar to PlaylistsScreen.trackRowHover
+
   trackRowPressed: {
     backgroundColor: '#0b0b0b',
   },
-  // Match playlist hover highlight tone
+
   trackRowHover: {
     backgroundColor: '#162a1a',
   },

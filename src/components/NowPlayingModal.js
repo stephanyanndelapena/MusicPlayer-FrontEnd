@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 import { usePlayer } from '../context/PlayerContext';
 import { SvgXml } from 'react-native-svg';
 
-// simple in-memory cache for fetched SVGs
 const svgCache = {};
 function RemoteSvgIcon({ uri, color = '#fff', width = 18, height = 18, style }) {
   const [svgText, setSvgText] = React.useState(null);
@@ -48,11 +47,9 @@ const PLAY_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/play-fill.svg`;
 const PAUSE_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/pause-fill.svg`;
 const SKIP_START_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/skip-start-fill.svg`;
 const SKIP_END_FILL_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/skip-end-fill.svg`;
-// Volume icons
 const VOLUME_UP_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-up-fill.svg';
 const VOLUME_MUTE_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-mute-fill.svg';
 
-// Inline accent so we don't rely on resolving the styles file
 const ACCENT_GREEN = '#1DB954';
 
 export default function NowPlayingModal() {
@@ -76,7 +73,6 @@ export default function NowPlayingModal() {
 
   if (!currentTrack) return null;
 
-  // hide the mini modal when the active route is NowPlaying
   const navState = navigation.getState?.();
   const activeRouteName = navState && navState.routes && navState.routes[navState.index] ? navState.routes[navState.index].name : null;
   if (activeRouteName === 'NowPlaying') return null;
@@ -96,7 +92,7 @@ export default function NowPlayingModal() {
   };
 
   const inactiveColor = '#d6d6d6';
-  const activeColor = ACCENT_GREEN; // use inline accent
+  const activeColor = ACCENT_GREEN;
   const playBtnIconColor = '#000000';
 
   const shuffleColor = useMemo(() => (isShuffled ? activeColor : inactiveColor), [isShuffled]);
@@ -124,7 +120,6 @@ export default function NowPlayingModal() {
 
   
   const onVolPressToggle = () => {
-    // Toggle for touch devices
     setIsVolumeOpen((s) => !s);
   };
 
@@ -133,7 +128,6 @@ export default function NowPlayingModal() {
   const handleVolDrag = (ev) => {
     const l = volLayoutRef.current;
     if (!l) return;
-    // vertical slider: use locationY and height. top => max volume, bottom => min.
     const y = ev.nativeEvent.locationY ?? 0;
     const pct = Math.max(0, Math.min(1, 1 - y / l.height));
     setIsVolDragging(true);
@@ -183,7 +177,6 @@ export default function NowPlayingModal() {
 
         <View style={styles.controls}>
           <TouchableOpacity onPress={() => toggleShuffle()} style={styles.iconButton}>
-            {/* direct color change when active, no circle badge */}
             <RemoteSvgIcon uri={SHUFFLE_SVG_URL} color={shuffleColor} width={16} height={16} />
           </TouchableOpacity>
 
@@ -200,11 +193,9 @@ export default function NowPlayingModal() {
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => toggleRepeat()} style={styles.iconButton}>
-            {/* direct color change when active, no circle badge */}
             <RemoteSvgIcon uri={REPEAT_SVG_URL} color={repeatColor} width={16} height={16} />
           </TouchableOpacity>
 
-          {/* Volume control (hover shows slider on web; press toggles on touch) */}
           <View style={styles.volumeWrap}>
             <Pressable onPress={onVolPressToggle} style={styles.volumeButton} accessibilityLabel={isMuted ? 'Muted' : 'Volume'}>
               <RemoteSvgIcon uri={isMuted ? VOLUME_MUTE_SVG_URL : VOLUME_UP_SVG_URL} color={transportColor} width={20} height={20} />
@@ -347,7 +338,7 @@ const styles = StyleSheet.create({
     height: 4,
     backgroundColor: '#fff',
   },
-  // Volume control (overlay anchored to the volume button)
+
   volumeWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -375,7 +366,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // vertical track
+
   volumeSliderBackground: {
     width: 6,
     height: '100%',
@@ -386,7 +377,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-end',
   },
-  // fill that grows from bottom up
+
   volumeSliderFill: {
     width: '100%',
     backgroundColor: ACCENT_GREEN,

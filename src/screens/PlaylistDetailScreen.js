@@ -13,9 +13,8 @@ import {
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
 import styles, { colors } from './PlaylistDetailScreen.styles';
-import { SvgXml } from 'react-native-svg'; // added for bootstrap SVG rendering
+import { SvgXml } from 'react-native-svg';
 
-// simple in-memory cache + helper to fetch and recolor remote SVGs
 const svgCache = {};
 function RemoteSvgIcon({ uri, color = '#fff', width = 18, height = 18, style }) {
   const [svgText, setSvgText] = React.useState(null);
@@ -62,17 +61,14 @@ export default function PlaylistDetailScreen({ route, navigation }) {
   const [removingTrackId, setRemovingTrackId] = useState(null);
   const [deletingPlaylist, setDeletingPlaylist] = useState(false);
 
-  // kebab menu modal state
   const [menuVisible, setMenuVisible] = useState(false);
   const [selectedForMenu, setSelectedForMenu] = useState(null);
 
-  // hover state for header buttons
   const [hoverEdit, setHoverEdit] = useState(false);
   const [hoverAdd, setHoverAdd] = useState(false);
   const [hoverOpen, setHoverOpen] = useState(false);
   const [hoverDelete, setHoverDelete] = useState(false);
 
-  // hover state for track rows (store id of hovered track)
   const [hoveredTrackId, setHoveredTrackId] = useState(null);
 
   const { currentTrack, isPlaying, play, pause } = usePlayer();
@@ -96,25 +92,23 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     return () => unsubscribe && unsubscribe();
   }, [fetchPlaylist, navigation]);
 
-  // Make header the same color as the screen body and remove the bottom border/shadow
   useEffect(() => {
     navigation.setOptions({
       title: 'Playlist',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
-        elevation: 0, // Android: remove shadow
-        shadowOpacity: 0, // iOS: remove shadow
+        elevation: 0,
+        shadowOpacity: 0,
       },
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
     });
   }, [navigation]);
 
-  // local tracks and search (declare hooks unconditionally at top-level of component)
   const tracks = Array.isArray(playlist?.tracks) ? playlist.tracks : [];
   const [searchQuery, setSearchQuery] = useState('');
-  const [trackFilter, setTrackFilter] = useState('recent'); // 'recent' | 'title' | 'artist'
+  const [trackFilter, setTrackFilter] = useState('recent');
   const queryLower = (searchQuery || '').trim().toLowerCase();
   const filteredTracks = useMemo(() => {
     const base = (tracks || []).filter((t) => {
@@ -130,7 +124,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     } else if (trackFilter === 'artist') {
       sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
     } else {
-      // 'recent' fallback: assume higher id is newer when no created_at available
       sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
     }
 
@@ -156,8 +149,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
       Alert.alert('Play error', 'Unable to play this track');
     }
   };
-
-  // togglePlayFor is defined later so it can use the filteredTracks (search results) as the playback queue
 
   const handleRemoveFromPlaylist = useCallback(
     async (track) => {
@@ -214,7 +205,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     }
   }, [id, deletingPlaylist, navigation]);
 
-  // modal handlers for kebab menu
   const openTrackMenu = (track) => {
     setSelectedForMenu(track);
     setMenuVisible(true);
@@ -234,7 +224,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
     await handleRemoveFromPlaylist(selectedForMenu);
   };
 
-  // Loading / empty states
   if (!playlist && loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -315,11 +304,8 @@ export default function PlaylistDetailScreen({ route, navigation }) {
       </View>
 
       <View style={styles.spacer12} />
-
-      {/* Search bar for tracks in this playlist */}
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
-          {/* replaced Unicode with Bootstrap SVG search icon */}
           <RemoteSvgIcon uri={SEARCH_SVG_URL} color="#888" width={16} height={16} style={{ marginRight: 8 }} />
           <TextInput
             placeholder="Search tracks in playlist"
@@ -339,7 +325,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
         </View>
       </View>
 
-      {/* Filter controls for this playlist: Recently added / Title A–Z / Artist A–Z */}
       <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
         {[
           { key: 'recent', label: 'Recently added' },
@@ -413,7 +398,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
               </View>
 
               <View style={styles.controls}>
-                {/* Kebab menu (three vertical dots). stopPropagation attempt to prevent row press */}
                 <Pressable
                   onPress={(e) => {
                     if (e && e.stopPropagation) e.stopPropagation();
@@ -432,7 +416,6 @@ export default function PlaylistDetailScreen({ route, navigation }) {
         contentContainerStyle={filteredTracks.length === 0 ? styles.listEmptyContainer : null}
       />
 
-      {/* Track kebab menu modal */}
       <Modal visible={menuVisible} animationType="slide" transparent onRequestClose={closeTrackMenu}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>

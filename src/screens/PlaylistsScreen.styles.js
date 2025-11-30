@@ -61,9 +61,9 @@ export default StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
   },
-  /* Hover state for playlist row */
+
   rowHover: {
-    backgroundColor: '#222622', // subtle highlight on hover
+    backgroundColor: '#222622',
   },
   thumb: {
     width: 56,
@@ -104,9 +104,9 @@ export default StyleSheet.create({
     alignItems: 'center',
     backgroundColor: colors.surface,
   },
-  /* Hover state for track row */
+
   trackRowHover: {
-    backgroundColor: '#162a1a', // subtle green-tinted highlight for track hover
+    backgroundColor: '#162a1a',
   },
   trackRowActive: {
     backgroundColor: '#162115',
@@ -209,7 +209,6 @@ export default StyleSheet.create({
     fontSize: 14,
   },
 
-  /* Outlined button styles */
   outlinedButton: {
     paddingVertical: 8,
     paddingHorizontal: 12,

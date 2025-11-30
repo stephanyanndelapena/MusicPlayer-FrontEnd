@@ -13,7 +13,6 @@ import api from '../api';
 import styles, { colors } from './PlaylistFormScreen.styles';
 
 export default function PlaylistFormScreen({ route, navigation }) {
-  // If route.params.playlist exists, we're editing
   const playlist = route.params?.playlist;
   const [name, setName] = useState(playlist?.name || '');
   const [description, setDescription] = useState(playlist?.description || '');
@@ -25,14 +24,13 @@ export default function PlaylistFormScreen({ route, navigation }) {
     });
   }, [navigation, playlist]);
 
-  // Make header match the screen body and remove bottom border/shadow
   useEffect(() => {
     navigation.setOptions({
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
-        elevation: 0, // Android - remove shadow
-        shadowOpacity: 0, // iOS - remove shadow
+        elevation: 0,
+        shadowOpacity: 0,
       },
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
@@ -48,14 +46,11 @@ export default function PlaylistFormScreen({ route, navigation }) {
     try {
       const payload = { name: name.trim(), description };
       if (playlist && playlist.id) {
-        // PATCH existing playlist
         await api.patch(`/playlists/${playlist.id}/`, payload);
       } else {
-        // POST new playlist
         await api.post('/playlists/', payload);
       }
 
-      // go back and trigger refresh where appropriate
       navigation.goBack();
     } catch (err) {
       console.error('Playlist save error', err?.response || err.message || err);
@@ -68,7 +63,6 @@ export default function PlaylistFormScreen({ route, navigation }) {
     }
   };
 
-  // Hoverable/pressable button that supports a 'primary' (filled) and 'outlined' variant.
   function HoverButton({ title, onPress, variant = 'primary', disabled = false, accessibilityLabel }) {
     const [hovered, setHovered] = useState(false);
 

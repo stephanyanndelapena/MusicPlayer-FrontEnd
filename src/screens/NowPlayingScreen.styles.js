@@ -1,32 +1,21 @@
 import { StyleSheet } from 'react-native';
 
-/**
- * Exports:
- * - colors: named export for tokens (header, controls, text, etc.)
- * - default: StyleSheet (import as: import styles, { colors } from './NowPlayingScreen.styles')
- */
-
 export const colors = {
-  // layout / surfaces
   background: '#121212',
   surface: '#181818',
 
-  // typography
   textPrimary: '#FFFFFF',
   textSecondary: '#B3B3B3',
 
-  // progress / accent
   progressBg: '#333333',
-  accent: '#1DB954', // Spotify green
+  accent: '#1DB954',
 
-  // header-specific token (separate from control icons)
   headerTint: '#FFFFFF',
 
-  // control-specific tokens (separate from header to avoid accidental overrides)
-  controlIcon: '#FFFFFF', // prev / next icon color
-  controlPrimaryBackground: '#1DB954', // play button background
-  controlPrimaryIcon: '#FFFFFF', // play icon color on primary background
-  controlButtonBackground: 'transparent', // optional small control background
+  controlIcon: '#FFFFFF',
+  controlPrimaryBackground: '#1DB954',
+  controlPrimaryIcon: '#FFFFFF',
+  controlButtonBackground: 'transparent',
   muted: '#2a2a2a',
 };
 
@@ -114,27 +103,25 @@ export default StyleSheet.create({
     backgroundColor: colors.controlButtonBackground,
   },
   transportIcon: {
-    color: colors.controlIcon, // uses control-specific token
+    color: colors.controlIcon,
     fontSize: 22,
   },
 
   playBigButton: {
-    backgroundColor: colors.controlPrimaryBackground, // separated token
+    backgroundColor: colors.controlPrimaryBackground,
     borderRadius: 40,
     width: 72,
     height: 72,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 12,
-    // subtle shadow
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.25,
     shadowRadius: 6,
     elevation: 6,
   },
-  // Volume control
-  // Volume control (right-side vertical overlay)
+
   volumeWrap: {
     alignItems: 'center',
     justifyContent: 'center',
@@ -147,7 +134,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // horizontal overlay anchored to the right side
+
   volumeSliderWrap: {
     position: 'absolute',
     right: -135,
@@ -176,7 +163,7 @@ export default StyleSheet.create({
   },
   playBigIcon: {
     fontSize: 28,
-    color: colors.controlPrimaryIcon, // separated token
+    color: colors.controlPrimaryIcon,
     fontWeight: '700',
   },
 
@@ -185,7 +172,7 @@ export default StyleSheet.create({
     paddingVertical: 6,
   },
   headerBackText: {
-    color: colors.headerTint, // header uses its own token
+    color: colors.headerTint,
     fontSize: 20,
     fontWeight: '600',
   },

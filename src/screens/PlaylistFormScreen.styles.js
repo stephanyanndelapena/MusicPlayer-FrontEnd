@@ -1,13 +1,13 @@
 import { StyleSheet } from 'react-native';
 
 export const colors = {
-  background: '#121212', // Spotify-like deep bg
+  background: '#121212',
   surface: '#181818',
   card: '#1E1E1E',
   textPrimary: '#FFFFFF',
   textSecondary: '#B3B3B3',
   placeholder: '#7a7a7a',
-  accent: '#1DB954', // Spotify green
+  accent: '#1DB954',
   mutedBorder: '#2a2a2a',
   danger: '#E53935',
 };
@@ -54,7 +54,6 @@ export default StyleSheet.create({
     alignItems: 'center',
   },
 
-  /* Primary (Save) button - filled by default */
   button: {
     backgroundColor: colors.accent,
     paddingVertical: 12,
@@ -65,9 +64,8 @@ export default StyleSheet.create({
     minWidth: 120,
   },
 
-  /* Hover/darker state for primary button */
   buttonHover: {
-    backgroundColor: '#18a84a', // slightly darker/more saturated green on hover/press
+    backgroundColor: '#18a84a',
   },
 
   buttonDisabled: {
@@ -80,7 +78,6 @@ export default StyleSheet.create({
     fontSize: 15,
   },
 
-  /* Optional text tweaks when filled and hovered (keeps white) */
   buttonTextHover: {
     color: colors.textPrimary,
   },
@@ -89,7 +86,6 @@ export default StyleSheet.create({
     color: colors.textPrimary,
   },
 
-  /* Cancel button - outlined by default */
   cancelButton: {
     marginLeft: 12,
     paddingVertical: 12,
@@ -103,7 +99,6 @@ export default StyleSheet.create({
     backgroundColor: 'transparent',
   },
 
-  /* When hovered/pressed, fill the cancel button with danger (red) and invert text */
   cancelButtonHover: {
     backgroundColor: colors.danger,
     borderColor: colors.danger,

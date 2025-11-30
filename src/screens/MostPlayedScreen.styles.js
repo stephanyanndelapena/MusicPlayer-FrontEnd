@@ -45,7 +45,7 @@ export default StyleSheet.create({
     backgroundColor: colors.surface,
     borderColor: colors.muted,
     borderWidth: 1,
-    position: 'relative', // allow absolutely positioned controls inside
+    position: 'relative',
   },
 
   topArt: {
@@ -94,9 +94,8 @@ export default StyleSheet.create({
     paddingHorizontal: 2,
   },
 
-  /* Hover style for rows (other tracks) */
   rowHover: {
-    backgroundColor: '#162a1a', // subtle green-tinted highlight
+    backgroundColor: '#162a1a',
     borderRadius: 8,
     paddingHorizontal: 8,
   },
@@ -151,7 +150,6 @@ export default StyleSheet.create({
     marginVertical: 8,
   },
 
-  /* Controls when topCard contains them */
   topCardControls: {
     position: 'absolute',
     right: 12,
@@ -193,7 +191,6 @@ export default StyleSheet.create({
     fontSize: 12,
   },
 
-  /* small centered controls used on empty state */
   centeredControls: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -230,7 +227,6 @@ export default StyleSheet.create({
     fontWeight: '700',
   },
 
-  /* generic pressed helper used on buttons */
   controlPressed: {
     opacity: 0.9,
   },

@@ -1,13 +1,7 @@
-// src/screens/MostPlayedScreen.js
 import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { getMostPlayed, getAllPlayCounts, clearPlayCounts } from '../utils/playCounts';
 import styles, { colors } from './MostPlayedScreen.styles';
-
-/**
- * MostPlayedScreen - moved controls into the topCard container (bottom-right).
- * Header now matches screen background and has no bottom border/shadow.
- */
 
 export default function MostPlayedScreen({ navigation }) {
   const [top, setTop] = useState(null);
@@ -30,15 +24,14 @@ export default function MostPlayedScreen({ navigation }) {
   };
 
   useEffect(() => {
-    // set title and make header match screen background; remove bottom border/shadow
     navigation.setOptions({
       title: 'Most Played Track',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
         borderBottomColor: 'transparent',
-        elevation: 0, // Android
-        shadowOpacity: 0, // iOS
+        elevation: 0,
+        shadowOpacity: 0,
       },
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
@@ -140,7 +133,6 @@ export default function MostPlayedScreen({ navigation }) {
         <Text style={styles.topArtist}>{top.artist || ''}</Text>
         <Text style={styles.topCount}>Plays: {top.count || 0}</Text>
 
-        {/* Controls placed inside topCard at bottom-right */}
         <View style={styles.topCardControls} pointerEvents="box-none">
           <Pressable onPress={load} style={({ pressed }) => [styles.topIconButton, pressed && styles.controlPressed]} accessibilityLabel="Refresh">
             <Text style={styles.topIcon}>⟳</Text>

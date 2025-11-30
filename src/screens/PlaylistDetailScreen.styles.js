@@ -77,7 +77,7 @@ export default StyleSheet.create({
   headerActionPressed: {
     opacity: 0.85,
   },
-  /* Hover: green border only (no fill change) */
+
   headerActionHover: {
     borderColor: colors.accent,
   },
@@ -95,7 +95,7 @@ export default StyleSheet.create({
     marginRight: 8,
     marginBottom: 8,
   },
-  /* On hover: show red border only, no fill */
+
   deleteButtonHover: {
     backgroundColor: 'transparent',
     borderWidth: 1,
@@ -121,11 +121,11 @@ export default StyleSheet.create({
     borderRadius: 8,
     marginBottom: 10,
   },
-  /* Hover for track row: subtle green-tinted highlight */
+
   trackItemHover: {
     backgroundColor: '#162a1a',
   },
-  /* Active/current track style (keeps existing darker green) */
+
   trackItemActive: {
     backgroundColor: '#162115',
   },
@@ -191,7 +191,6 @@ export default StyleSheet.create({
     paddingTop: 24,
   },
 
-  /* Modal styles for kebab menu */
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',

@@ -19,8 +19,8 @@ export default function TrackFormScreen({ route, navigation }) {
 
   const [title, setTitle] = useState(track?.title || '');
   const [artist, setArtist] = useState(track?.artist || '');
-  const [audioFile, setAudioFile] = useState(null); // web File
-  const [artwork, setArtwork] = useState(null); // web File
+  const [audioFile, setAudioFile] = useState(null);
+  const [artwork, setArtwork] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const webAudioRef = useRef(null);
   const webArtworkRef = useRef(null);
@@ -37,15 +37,14 @@ export default function TrackFormScreen({ route, navigation }) {
     }
   }, [track]);
 
-  // Make header match the screen body and remove the default bottom line/shadow
   useEffect(() => {
     navigation.setOptions({
       title: 'Add a Song',
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
-        elevation: 0, // Android: remove shadow
-        shadowOpacity: 0, // iOS: remove shadow
+        elevation: 0,
+        shadowOpacity: 0,
       },
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
@@ -179,7 +178,6 @@ export default function TrackFormScreen({ route, navigation }) {
           accessibilityLabel="Artist name"
         />
 
-        {/* preview */}
         {previewUrl ? (
           Platform.OS === 'web' ? (
             <div style={{ marginBottom: 12 }}>

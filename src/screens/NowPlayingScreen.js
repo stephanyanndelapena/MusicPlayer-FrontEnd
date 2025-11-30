@@ -6,16 +6,11 @@ import { incrementPlayCount } from '../utils/playCounts';
 import makeFullUrl from '../utils/makeFullUrl';
 import styles, { colors } from './NowPlayingScreen.styles';
 
-/**
- * RemoteSvgIcon - fetches SVG markup from a URL once and caches it in-memory.
- * Replace fill/stroke attributes at render time so color can be applied dynamically.
- */
 function RemoteSvgIcon({ uri, color = '#fff', width = 22, height = 22, style }) {
   const [svgText, setSvgText] = useState(null);
 
   useEffect(() => {
     let mounted = true;
-    // Fetch once per URI
     fetch(uri)
       .then((res) => res.text())
       .then((text) => {
@@ -31,12 +26,9 @@ function RemoteSvgIcon({ uri, color = '#fff', width = 22, height = 22, style }) 
   }, [uri]);
 
   if (!svgText) {
-    // empty placeholder while loading
     return <View style={[{ width, height }, style]} />;
   }
 
-  // Replace any explicit stroke/fill colors with the requested color.
-  // This is a simple approach; depending on the SVG you might need more robust transformations.
   const colored = svgText
     .replace(/fill="[^"]*"/gi, `fill="${color}"`)
     .replace(/stroke="[^"]*"/gi, `stroke="${color}"`)
@@ -46,15 +38,12 @@ function RemoteSvgIcon({ uri, color = '#fff', width = 22, height = 22, style }) 
   return <SvgXml xml={colored} width={width} height={height} style={style} />;
 }
 
-// CDN icon URLs (Bootstrap Icons via jsDelivr).
-// Using fill variants for the play/pause and skip icons so they render clearly on the colored play button.
 const SHUFFLE_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/shuffle.svg';
 const REPEAT_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/repeat.svg';
 const PLAY_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/play-fill.svg';
 const PAUSE_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/pause-fill.svg';
 const SKIP_START_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/skip-start-fill.svg';
 const SKIP_END_FILL_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/skip-end-fill.svg';
-// Volume icons
 const VOLUME_UP_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-up-fill.svg';
 const VOLUME_MUTE_SVG_URL = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons/volume-mute-fill.svg';
 
@@ -82,7 +71,6 @@ export default function NowPlayingScreen({ navigation }) {
   const panResponder = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragPct, setDragPct] = useState(null);
-  // Volume UI state
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const volLayoutRef = useRef(null);
   const volPanResponder = useRef(null);
@@ -90,8 +78,10 @@ export default function NowPlayingScreen({ navigation }) {
   const [volDragPct, setVolDragPct] = useState(null);
 
   useEffect(() => {
+    const trackTitle = currentTrack && currentTrack.title ? ` - ${currentTrack.title}` : '';
+    const headerTitle = `Now Playing${trackTitle}`;
     navigation.setOptions({
-      title: 'Now Playing',
+      title: headerTitle,
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
@@ -101,7 +91,7 @@ export default function NowPlayingScreen({ navigation }) {
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
     });
-  }, [navigation]);
+  }, [navigation, currentTrack?.title, colors]);
 
   if (!currentTrack) {
     return (
@@ -194,14 +184,12 @@ export default function NowPlayingScreen({ navigation }) {
 
   const iconColorFor = (active) => (active ? colors.accent || colors.textPrimary : colors.textSecondary);
 
-  // Memoize icon colors so strings passed into replace are stable
   const shuffleColor = useMemo(() => iconColorFor(isShuffled), [isShuffled]);
   const repeatColor = useMemo(() => iconColorFor(isRepeat), [isRepeat]);
   const transportColor = useMemo(() => colors.controlIcon || colors.textPrimary, []);
   const playIconColor = useMemo(() => colors.controlPrimaryIcon || '#fff', []);
 
   const onVolPressToggle = () => {
-    // Toggle for touch devices
     setIsVolumeOpen((s) => !s);
   };
 
@@ -210,7 +198,6 @@ export default function NowPlayingScreen({ navigation }) {
   const handleVolDrag = (ev) => {
     const l = volLayoutRef.current;
     if (!l) return;
-    // horizontal slider: use locationX and width
     const x = ev.nativeEvent.locationX ?? 0;
     const pct = Math.max(0, Math.min(1, x / l.width));
     setIsVolDragging(true);
@@ -267,17 +254,14 @@ export default function NowPlayingScreen({ navigation }) {
       </View>
 
       <View style={styles.controlsRow}>
-        {/* Shuffle button - remote SVG */}
         <TouchableOpacity onPress={toggleShuffle} style={styles.transportButton} accessibilityLabel="Toggle shuffle">
           <RemoteSvgIcon uri={SHUFFLE_SVG_URL} color={shuffleColor} width={22} height={22} />
         </TouchableOpacity>
 
-        {/* Previous (skip start) */}
         <TouchableOpacity onPress={playPrev} style={styles.transportButton} accessibilityLabel="Previous track">
           <RemoteSvgIcon uri={SKIP_START_FILL_SVG_URL} color={transportColor} width={22} height={22} />
         </TouchableOpacity>
 
-        {/* Play / Pause (large button) */}
         <TouchableOpacity
           onPress={handlePlayToggle}
           style={styles.playBigButton}
@@ -291,17 +275,14 @@ export default function NowPlayingScreen({ navigation }) {
           />
         </TouchableOpacity>
 
-        {/* Next (skip end) */}
         <TouchableOpacity onPress={playNext} style={styles.transportButton} accessibilityLabel="Next track">
           <RemoteSvgIcon uri={SKIP_END_FILL_SVG_URL} color={transportColor} width={22} height={22} />
         </TouchableOpacity>
 
-        {/* Repeat button - remote SVG */}
         <TouchableOpacity onPress={toggleRepeat} style={styles.transportButton} accessibilityLabel={isRepeat ? 'Repeat on' : 'Repeat off'}>
           <RemoteSvgIcon uri={REPEAT_SVG_URL} color={repeatColor} width={22} height={22} />
         </TouchableOpacity>
 
-        {/* Volume control (hover shows slider on web; press toggles on touch) */}
         <View style={styles.volumeWrap}>
           <Pressable onPress={onVolPressToggle} style={styles.volumeButton} accessibilityLabel={isMuted ? 'Muted' : 'Volume'}>
             <RemoteSvgIcon uri={isMuted ? VOLUME_MUTE_SVG_URL : VOLUME_UP_SVG_URL} color={transportColor} width={20} height={20} />

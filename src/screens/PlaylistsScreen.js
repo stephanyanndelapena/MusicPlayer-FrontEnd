@@ -14,9 +14,8 @@ import {
 import api from '../api';
 import { usePlayer } from '../context/PlayerContext';
 import styles, { colors } from './PlaylistsScreen.styles';
-import { SvgXml } from 'react-native-svg'; // added for bootstrap SVG icon rendering
+import { SvgXml } from 'react-native-svg';
 
-/* simple in-memory cache + helper to fetch and recolor remote SVGs */
 const svgCache = {};
 function RemoteSvgIcon({ uri, color = '#fff', width = 16, height = 16, style }) {
   const [svgText, setSvgText] = useState(null);
@@ -55,7 +54,6 @@ function RemoteSvgIcon({ uri, color = '#fff', width = 16, height = 16, style }) 
 
 const BOOTSTRAP_ICONS_BASE = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons';
 const SEARCH_SVG_URL = `${BOOTSTRAP_ICONS_BASE}/search.svg`;
-/* resolveArtworkUrl unchanged */
 function resolveArtworkUrl(artwork) {
   if (!artwork) return null;
   if (artwork.startsWith('http://') || artwork.startsWith('https://')) return artwork;
@@ -67,7 +65,6 @@ function resolveArtworkUrl(artwork) {
   return `http://127.0.0.1:8000${path}`;
 }
 
-/* Memoized Artwork component */
 const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderStyle }) {
   const uri = useMemo(() => (artwork ? resolveArtworkUrl(artwork) : null), [artwork]);
   const source = useMemo(() => (uri ? { uri } : null), [uri]);
@@ -79,7 +76,6 @@ const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderSt
   return <Image source={source} style={imageStyle || styles.trackThumb} />;
 });
 
-/* Playlist row component with hover highlight */
 function PlaylistRow({ item, onPress }) {
   const [hovered, setHovered] = useState(false);
 
@@ -168,7 +164,6 @@ const TrackItem = React.memo(function TrackItem({ item, onAddToPlaylist, queue, 
   return a.id === b.id && a.artwork === b.artwork && a.title === b.title && a.artist === b.artist;
 });
 
-/* OutlinedButton - shows as green border (transparent) and fills with green on hover/press */
 function OutlinedButton({ title, onPress, style, textStyle, color = colors.accent, accessibilityLabel }) {
   const [hovered, setHovered] = useState(false);
 
@@ -211,14 +206,13 @@ export default function PlaylistsScreen({ navigation }) {
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
   const [selectedTrackToAdd, setSelectedTrackToAdd] = useState(null);
 
-  // Set header to match body and remove bottom border / shadow
   useEffect(() => {
     navigation.setOptions({
       headerStyle: {
         backgroundColor: colors.background || '#121212',
         borderBottomWidth: 0,
-        elevation: 0, // Android
-        shadowOpacity: 0, // iOS
+        elevation: 0,
+        shadowOpacity: 0,
       },
       headerTintColor: colors.textPrimary || '#fff',
       headerTitleStyle: { color: colors.textPrimary || '#fff' },
@@ -255,7 +249,6 @@ export default function PlaylistsScreen({ navigation }) {
     return () => unsub && unsub();
   }, [navigation]);
 
-  // Memoized filtered lists based on the search query
   const queryLower = (searchQuery || '').trim().toLowerCase();
   const filteredPlaylists = useMemo(() => {
     if (!queryLower) return playlists;
@@ -270,14 +263,12 @@ export default function PlaylistsScreen({ navigation }) {
       return title.includes(queryLower) || artist.includes(queryLower);
     });
 
-    // Apply sorting based on selected filter
     const sorted = [...base];
     if (trackFilter === 'title') {
       sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
     } else if (trackFilter === 'artist') {
       sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
     } else {
-      // 'recent' fallback: assume higher id is newer when no created_at available
       sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
     }
 
@@ -365,7 +356,6 @@ export default function PlaylistsScreen({ navigation }) {
             <OutlinedButton title="Add Song" onPress={() => navigation.navigate('TrackForm')} color={colors.accent} />
           </View>
 
-          {/* ADDED: All Tracks button placed between Add Song and Most Played */}
           <View style={styles.smallButton}>
             <OutlinedButton title="All Tracks" onPress={() => navigation.navigate('AllTracks')} color={colors.accent} />
           </View>
@@ -376,10 +366,8 @@ export default function PlaylistsScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Search bar */}
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
-          {/* replaced Unicode search emoji with Bootstrap SVG icon */}
           <RemoteSvgIcon uri={SEARCH_SVG_URL} color="#888" width={16} height={16} style={{ marginRight: 8 }} />
           <TextInput
             placeholder="Search playlists or tracks"
@@ -399,7 +387,6 @@ export default function PlaylistsScreen({ navigation }) {
         </View>
       </View>
 
-      {/* Filter controls: Recently added / Title A–Z / Artist A–Z */}
       <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
         {[
           { key: 'recent', label: 'Recently added' },
