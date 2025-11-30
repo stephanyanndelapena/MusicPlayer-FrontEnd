@@ -387,7 +387,7 @@ export default function PlaylistsScreen({ navigation }) {
         </View>
       </View>
 
-      <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
+      {/* <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
         {[
           { key: 'recent', label: 'Recently added' },
           { key: 'title', label: 'Title A–Z' },
@@ -414,7 +414,7 @@ export default function PlaylistsScreen({ navigation }) {
             </Pressable>
           );
         })}
-      </View>
+      </View> */}
 
       <FlatList
         data={filteredPlaylists}
