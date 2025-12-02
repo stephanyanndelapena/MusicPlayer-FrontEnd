@@ -126,6 +126,7 @@ export default StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    overflow: 'visible', 
   },
   volumeButton: {
     padding: 10,
@@ -137,28 +138,21 @@ export default StyleSheet.create({
 
   volumeSliderWrap: {
     position: 'absolute',
-    right: -135,
-    top: '1%',
-    width: 140,
-    height: 40,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: colors.surface,
     borderRadius: 8,
     elevation: 6,
     zIndex: 9999,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   volumeSliderBackground: {
-    height: 6,
-    width: '100%',
     backgroundColor: colors.muted,
     borderRadius: 4,
     overflow: 'hidden',
+    position: 'relative',
   },
   volumeSliderFill: {
-    height: 6,
+    position: 'absolute',
     backgroundColor: colors.accent,
   },
   playBigIcon: {

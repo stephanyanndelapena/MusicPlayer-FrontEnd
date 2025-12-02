@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useMemo } from 'react';
-import { View, Text, Image, TouchableOpacity, PanResponder, Pressable } from 'react-native';
+import { View, Text, Image, TouchableOpacity, PanResponder, Pressable, Platform, useWindowDimensions} from 'react-native';
 import { SvgXml } from 'react-native-svg';
 import { usePlayer } from '../context/PlayerContext';
 import { incrementPlayCount } from '../utils/playCounts';
@@ -76,6 +76,11 @@ export default function NowPlayingScreen({ navigation }) {
   const volPanResponder = useRef(null);
   const [isVolDragging, setIsVolDragging] = useState(false);
   const [volDragPct, setVolDragPct] = useState(null);
+  const { width } = useWindowDimensions();
+  const sliderIsVertical = width < 700;
+
+  
+  
 
   useEffect(() => {
     const trackTitle = currentTrack && currentTrack.title ? ` - ${currentTrack.title}` : '';
@@ -123,29 +128,51 @@ export default function NowPlayingScreen({ navigation }) {
     volLayoutRef.current = l;
   };
 
-  const handleDrag = (ev) => {
-    const l = layoutRef.current;
+  const handleVolDrag = (ev) => {
+    const l = volLayoutRef.current;
     if (!l) return;
-    const x = ev.nativeEvent.locationX ?? 0;
-    const pct = Math.max(0, Math.min(1, x / l.width));
-    setIsDragging(true);
-    setDragPct(pct);
-    seekTo(pct);
+    if (sliderIsVertical) {
+      const y = ev.nativeEvent.locationY ?? 0;
+      const pct = Math.max(0, Math.min(1, 1 - y / l.height));
+      setIsVolDragging(true);
+      setVolDragPct(pct);
+      if (setVolume) setVolume(pct);
+    } else {
+      const x = ev.nativeEvent.locationX ?? 0;
+      const pct = Math.max(0, Math.min(1, x / l.width));
+      setIsVolDragging(true);
+      setVolDragPct(pct);
+      if (setVolume) setVolume(pct);
+    }
   };
 
-  const handleDragEnd = (ev) => {
-    const l = layoutRef.current;
+  const handleVolDragEnd = (ev) => {
+    const l = volLayoutRef.current;
     if (!l) {
-      setIsDragging(false);
-      setDragPct(null);
+      setIsVolDragging(false);
+      setVolDragPct(null);
       return;
     }
-    const x = ev.nativeEvent.locationX ?? 0;
-    const pct = Math.max(0, Math.min(1, x / l.width));
-    seekTo(pct);
-    setIsDragging(false);
-    setDragPct(null);
+    if (sliderIsVertical) {
+      const y = ev.nativeEvent.locationY ?? 0;
+      const pct = Math.max(0, Math.min(1, 1 - y / l.height));
+      if (setVolume) setVolume(pct);
+    } else {
+      const x = ev.nativeEvent.locationX ?? 0;
+      const pct = Math.max(0, Math.min(1, x / l.width));
+      if (setVolume) setVolume(pct);
+    }
+    setIsVolDragging(false);
+    setVolDragPct(null);
   };
+
+  const fillPct = Math.max(
+    0,
+    Math.min(
+      100,
+      isVolDragging && volDragPct != null ? volDragPct * 100 : (volume || 0) * 100
+    )
+  );
 
   useEffect(() => {
     panResponder.current = PanResponder.create({
@@ -195,29 +222,7 @@ export default function NowPlayingScreen({ navigation }) {
 
   const isMuted = (typeof volume === 'number' ? volume <= 0.001 : false);
 
-  const handleVolDrag = (ev) => {
-    const l = volLayoutRef.current;
-    if (!l) return;
-    const x = ev.nativeEvent.locationX ?? 0;
-    const pct = Math.max(0, Math.min(1, x / l.width));
-    setIsVolDragging(true);
-    setVolDragPct(pct);
-    if (setVolume) setVolume(pct);
-  };
-
-  const handleVolDragEnd = (ev) => {
-    const l = volLayoutRef.current;
-    if (!l) {
-      setIsVolDragging(false);
-      setVolDragPct(null);
-      return;
-    }
-    const x = ev.nativeEvent.locationX ?? 0;
-    const pct = Math.max(0, Math.min(1, x / l.width));
-    if (setVolume) setVolume(pct);
-    setIsVolDragging(false);
-    setVolDragPct(null);
-  };
+  
 
   return (
     <View style={styles.container}>
@@ -290,13 +295,32 @@ export default function NowPlayingScreen({ navigation }) {
 
           {isVolumeOpen ? (
             <View
-              style={styles.volumeSliderWrap}
+              style={[
+                styles.volumeSliderWrap,
+                sliderIsVertical
+                  ? { right: 1, bottom: 56, marginBottom: 8, width: 36, height: 120, paddingHorizontal: 8, paddingVertical: 6 } // numeric bottom offset so it appears above the button on phones
+                  : { left: '100%', top: 0, marginLeft: 8, width: 140, height: 36, paddingHorizontal: 8, paddingVertical: 6 },
+              ]}
               onLayout={onVolumeLayout}
               onStartShouldSetResponder={() => true}
               {...(volPanResponder.current ? volPanResponder.current.panHandlers : {})}
             >
-              <View style={styles.volumeSliderBackground}>
-                <View style={[styles.volumeSliderFill, { width: `${Math.max(0, Math.min(100, isVolDragging && volDragPct != null ? volDragPct * 100 : (volume || 0) * 100))}%` }]} />
+              <View
+                style={[
+                  styles.volumeSliderBackground,
+                  sliderIsVertical
+                    ? { width: 8, height: '100%' }
+                    : { height: 8, width: '100%', borderRadius: 4 },
+                ]}
+              >
+                <View
+                  style={[
+                    styles.volumeSliderFill,
+                    sliderIsVertical
+                      ? { height: `${fillPct}%`, bottom: 0, left: 0, right: 0, width: '100%' }
+                      : { width: `${fillPct}%`, top: 0, left: 0, bottom: undefined, height: '100%' },
+                  ]}
+                />
               </View>
             </View>
           ) : null}
