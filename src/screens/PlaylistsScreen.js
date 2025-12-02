@@ -293,214 +293,215 @@ export default function PlaylistsScreen({ navigation }) {
       return title.includes(queryLower) || artist.includes(queryLower);
     });
 
-    const sorted = [...base];
-    if (trackFilter === 'title') {
-      sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
-    } else if (trackFilter === 'artist') {
-      sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
-    } else {
-      sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
+  const sorted = [...base];
+  if (trackFilter === 'title') {
+    sorted.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
+  } else if (trackFilter === 'artist') {
+    sorted.sort((a, b) => (a.artist || '').localeCompare(b.artist || ''));
+  } else {
+    sorted.sort((a, b) => (b.id || 0) - (a.id || 0));
+  }
+
+  return sorted;
+}, [tracks, queryLower, trackFilter]);
+
+const renderPlaylistItem = ({ item }) => {
+  return <PlaylistRow item={item} onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })} />;
+};
+
+const openAddToPlaylistModal = useCallback(
+  async (track) => {
+    setSelectedTrackToAdd(track);
+    if (playlists.length === 0) {
+      setPlaylistsLoading(true);
+      try {
+        await fetchPlaylists();
+      } finally {
+        setPlaylistsLoading(false);
+      }
     }
+    setPlaylistModalVisible(true);
+  },
+  [playlists.length]
+);
 
-    return sorted;
-  }, [tracks, queryLower, trackFilter]);
-
-  const renderPlaylistItem = ({ item }) => {
-    return <PlaylistRow item={item} onPress={() => navigation.navigate('PlaylistDetail', { id: item.id })} />;
-  };
-
-  const openAddToPlaylistModal = useCallback(
-    async (track) => {
-      setSelectedTrackToAdd(track);
-      if (playlists.length === 0) {
-        setPlaylistsLoading(true);
-        try {
-          await fetchPlaylists();
-        } finally {
-          setPlaylistsLoading(false);
-        }
-      }
-      setPlaylistModalVisible(true);
-    },
-    [playlists.length]
-  );
-
-  const attachTrackToPlaylist = async (playlist) => {
-    if (!selectedTrackToAdd) return;
-    try {
-      const existing = (playlist.tracks || []).map((t) => t.id);
-      if (existing.includes(selectedTrackToAdd.id)) {
-        Alert.alert('Already added', `"${selectedTrackToAdd.title}" is already in "${playlist.name}"`);
-        setPlaylistModalVisible(false);
-        setSelectedTrackToAdd(null);
-        return;
-      }
-      existing.push(selectedTrackToAdd.id);
-      await api.patch(`/playlists/${playlist.id}/`, { track_ids: existing });
-      await Promise.all([fetchPlaylists(), fetchTracks()]);
-      Alert.alert('Added', `"${selectedTrackToAdd.title}" was added to "${playlist.name}"`);
-    } catch (err) {
-      console.error('attachTrackToPlaylist error', err?.response || err);
-      Alert.alert('Error', 'Failed to add to playlist');
-    } finally {
+const attachTrackToPlaylist = async (playlist) => {
+  if (!selectedTrackToAdd) return;
+  try {
+    const existing = (playlist.tracks || []).map((t) => t.id);
+    if (existing.includes(selectedTrackToAdd.id)) {
+      Alert.alert('Already added', `"${selectedTrackToAdd.title}" is already in "${playlist.name}"`);
       setPlaylistModalVisible(false);
       setSelectedTrackToAdd(null);
+      return;
     }
-  };
+    existing.push(selectedTrackToAdd.id);
+    await api.patch(`/playlists/${playlist.id}/`, { track_ids: existing });
+    await Promise.all([fetchPlaylists(), fetchTracks()]);
+    Alert.alert('Added', `"${selectedTrackToAdd.title}" was added to "${playlist.name}"`);
+  } catch (err) {
+    console.error('attachTrackToPlaylist error', err?.response || err);
+    Alert.alert('Error', 'Failed to add to playlist');
+  } finally {
+    setPlaylistModalVisible(false);
+    setSelectedTrackToAdd(null);
+  }
+};
 
-  const renderTrackItem = useCallback(
-    ({ item, index }) => <TrackItem item={item} onAddToPlaylist={openAddToPlaylistModal} queue={filteredTracks} index={index} />,
-    [openAddToPlaylistModal, filteredTracks]
-  );
+const renderTrackItem = useCallback(
+  ({ item, index }) => <TrackItem item={item} onAddToPlaylist={openAddToPlaylistModal} queue={filteredTracks} index={index} />,
+  [openAddToPlaylistModal, filteredTracks]
+);
 
-  const TracksFooter = () => {
-    const recentTracks = filteredTracks.slice(0, 5);
-    return (
-      <View style={{ paddingVertical: 12 }}>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Recent tracks</Text>
-        </View>
-
-        {filteredTracks.length === 0 ? (
-          <Text style={styles.emptyText}>
-            {queryLower ? 'No songs match your search.' : 'No songs yet. Use "Add Song" (header) to upload music.'}
-          </Text>
-        ) : (
-          <FlatList
-            data={recentTracks}
-            keyExtractor={(t) => String(t.id)}
-            renderItem={renderTrackItem}
-            ItemSeparatorComponent={() => <View style={styles.separator} />}
-          />
-        )}
-      </View>
-    );
-  };
-
+const TracksFooter = () => {
+  const recentTracks = filteredTracks.slice(0, 5);
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.headerTitle}>Your Library</Text>
-          <Text style={styles.headerSubtitle}>Playlists</Text>
-        </View>
-
-        <View style={styles.headerButtons}>
-          <View style={styles.smallButton}>
-            <IconOutlinedButton
-              uri={`${BOOTSTRAP_ICONS_BASE}/plus.svg`}
-              onPress={() => setAddModalVisible(true)}
-              accessibilityLabel="Add"
-            />
-          </View>
-
-          <View style={styles.smallButton}>
-            <OutlinedButton title="All Tracks" onPress={() => navigation.navigate('AllTracks')} color={colors.accent} />
-          </View>
-
-          <View style={styles.smallButton}>
-            <OutlinedButton title="Most Played" onPress={() => navigation.navigate('MostPlayed')} color={colors.accent} />
-          </View>
-        </View>
+    <View style={{ paddingVertical: 12 }}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Recent tracks</Text>
       </View>
 
-      <Modal visible={addModalVisible} animationType="slide" transparent={true} onRequestClose={() => setAddModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Create Playlist or Add a Song</Text>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => {
-                setAddModalVisible(false);
-                navigation.navigate('PlaylistForm');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalOptionText}>Create Playlist</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.modalOption}
-              onPress={() => {
-                setAddModalVisible(false);
-                navigation.navigate('TrackForm');
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.modalOptionText}>Add a Song</Text>
-            </TouchableOpacity>
-
-            <View style={{ marginTop: 12 }}>
-              <OutlinedButton title="Cancel" onPress={() => setAddModalVisible(false)} color={colors.accent} />
-            </View>
-          </View>
-        </View>
-      </Modal>
-
-      <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
-          <RemoteSvgIcon uri={SEARCH_SVG_URL} color="#888" width={16} height={16} style={{ marginRight: 8 }} />
-          <TextInput
-            placeholder="Search playlists or tracks"
-            placeholderTextColor="#888"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            style={{ flex: 1, color: '#fff', paddingVertical: 8 }}
-            returnKeyType="search"
-            accessible={true}
-            accessibilityLabel="Search"
-          />
-          {searchQuery ? (
-            <Pressable onPress={() => setSearchQuery('')} style={{ padding: 6 }} accessibilityLabel="Clear search">
-              <Text style={{ color: '#fff' }}>✖</Text>
-            </Pressable>
-          ) : null}
-        </View>
-      </View>
-
-      <FlatList
-        data={filteredPlaylists}
-        keyExtractor={(p) => String(p.id)}
-        renderItem={renderPlaylistItem}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListFooterComponent={<TracksFooter />}
-        contentContainerStyle={styles.listContent}
-        refreshing={loading}
-        onRefresh={() => {
-          setLoading(true);
-          Promise.all([fetchPlaylists(), fetchTracks()]).finally(() => setLoading(false));
-        }}
-      />
-
-      <Modal visible={playlistModalVisible} animationType="slide" transparent={true} onRequestClose={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Add "{selectedTrackToAdd?.title}" to playlist</Text>
-
-            {playlistsLoading ? (
-              <ActivityIndicator size="small" color={colors.accent} />
-            ) : (
-              <FlatList
-                data={playlists}
-                keyExtractor={(p) => String(p.id)}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={styles.playlistOption} onPress={() => attachTrackToPlaylist(item)} activeOpacity={0.7}>
-                    <Text style={styles.playlistOptionText}>
-                      {item.name} <Text style={styles.playlistOptionCount}>({(item.tracks || []).length})</Text>
-                    </Text>
-                  </TouchableOpacity>
-                )}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            )}
-
-            <View style={{ marginTop: 12 }}>
-              <OutlinedButton title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} color={colors.accent} />
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {filteredTracks.length === 0 ? (
+        <Text style={styles.emptyText}>
+          {queryLower ? 'No songs match your search.' : 'No songs yet. Use "Add Song" (header) to upload music.'}
+        </Text>
+      ) : (
+        <FlatList
+          data={recentTracks}
+          keyExtractor={(t) => String(t.id)}
+          renderItem={renderTrackItem}
+          ItemSeparatorComponent={() => <View style={styles.separator} />}
+        />
+      )}
     </View>
   );
-}
+};
+
+return (
+  <View style={styles.container}>
+    <View style={styles.headerRow}>
+      <View>
+        <Text style={styles.headerTitle}>Your Library</Text>
+        <Text style={styles.headerSubtitle}>Playlists</Text>
+      </View>
+    </View>
+
+    <View style={styles.headerButtonsContainer}>
+      <View style={styles.headerButtons}>
+        <View style={styles.smallButton}>
+          <IconOutlinedButton
+            uri={`${BOOTSTRAP_ICONS_BASE}/plus.svg`}
+            onPress={() => setAddModalVisible(true)}
+            accessibilityLabel="Add"
+          />
+        </View>
+
+        <View style={styles.smallButton}>
+          <OutlinedButton title="All Tracks" onPress={() => navigation.navigate('AllTracks')} color={colors.accent} />
+        </View>
+
+        <View style={styles.smallButton}>
+          <OutlinedButton title="Most Played" onPress={() => navigation.navigate('MostPlayed')} color={colors.accent} />
+        </View>
+      </View>
+    </View>
+
+    <Modal visible={addModalVisible} animationType="slide" transparent={true} onRequestClose={() => setAddModalVisible(false)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Create Playlist or Add a Song</Text>
+
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() => {
+              setAddModalVisible(false);
+              navigation.navigate('PlaylistForm');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.modalOptionText}>Create Playlist</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.modalOption}
+            onPress={() => {
+              setAddModalVisible(false);
+              navigation.navigate('TrackForm');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.modalOptionText}>Add a Song</Text>
+          </TouchableOpacity>
+
+          <View style={{ marginTop: 12 }}>
+            <OutlinedButton title="Cancel" onPress={() => setAddModalVisible(false)} color={colors.accent} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+
+    <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>
+        <RemoteSvgIcon uri={SEARCH_SVG_URL} color="#888" width={16} height={16} style={{ marginRight: 8 }} />
+        <TextInput
+          placeholder="Search playlists or tracks"
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          style={{ flex: 1, color: '#fff', paddingVertical: 8 }}
+          returnKeyType="search"
+          accessible={true}
+          accessibilityLabel="Search"
+        />
+        {searchQuery ? (
+          <Pressable onPress={() => setSearchQuery('')} style={{ padding: 6 }} accessibilityLabel="Clear search">
+            <Text style={{ color: '#fff' }}>✖</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+
+    <FlatList
+      data={filteredPlaylists}
+      keyExtractor={(p) => String(p.id)}
+      renderItem={renderPlaylistItem}
+      ItemSeparatorComponent={() => <View style={styles.separator} />}
+      ListFooterComponent={<TracksFooter />}
+      contentContainerStyle={styles.listContent}
+      refreshing={loading}
+      onRefresh={() => {
+        setLoading(true);
+        Promise.all([fetchPlaylists(), fetchTracks()]).finally(() => setLoading(false));
+      }}
+    />
+
+    <Modal visible={playlistModalVisible} animationType="slide" transparent={true} onRequestClose={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <Text style={styles.modalTitle}>Add "{selectedTrackToAdd?.title}" to playlist</Text>
+
+          {playlistsLoading ? (
+            <ActivityIndicator size="small" color={colors.accent} />
+          ) : (
+            <FlatList
+              data={playlists}
+              keyExtractor={(p) => String(p.id)}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.playlistOption} onPress={() => attachTrackToPlaylist(item)} activeOpacity={0.7}>
+                  <Text style={styles.playlistOptionText}>
+                    {item.name} <Text style={styles.playlistOptionCount}>({(item.tracks || []).length})</Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => <View style={styles.separator} />}
+            />
+          )}
+
+          <View style={{ marginTop: 12 }}>
+            <OutlinedButton title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} color={colors.accent} />
+          </View>
+        </View>
+      </View>
+    </Modal>
+  </View>
+)};
