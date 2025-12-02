@@ -57,8 +57,7 @@ export default function TrackFormScreen({ route, navigation }) {
         try {
           URL.revokeObjectURL(previewUrl);
         } catch (e) {
-          // ignore
-        }
+          }
       }
     };
   }, [previewUrl]);

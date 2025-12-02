@@ -12,6 +12,9 @@ export const colors = {
   muted: '#2a2a2a',
 };
 
+const BUTTON_SIZE = 40;
+const BUTTON_RADIUS = BUTTON_SIZE / 2;
+
 export default StyleSheet.create({
   container: {
     flex: 1,
@@ -97,7 +100,6 @@ export default StyleSheet.create({
   rowHover: {
     backgroundColor: '#162a1a',
     borderRadius: 8,
-    paddingHorizontal: 8,
   },
 
   rowText: {
@@ -160,9 +162,9 @@ export default StyleSheet.create({
   },
 
   topIconButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_RADIUS,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.muted,
@@ -170,20 +172,25 @@ export default StyleSheet.create({
     justifyContent: 'center',
     marginLeft: 8,
   },
-  topIcon: {
-    color: colors.textPrimary,
-    fontSize: 20,
-    lineHeight: 20,
+  topIconHover: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
 
   topClearButton: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_RADIUS,
     marginLeft: 8,
-    backgroundColor: colors.danger,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
-    borderRadius: 18,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  topClearHover: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
   },
   topClearText: {
     color: '#fff',
@@ -198,33 +205,34 @@ export default StyleSheet.create({
   },
 
   refreshButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_RADIUS,
     backgroundColor: colors.surface,
     borderWidth: 1,
     borderColor: colors.muted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  refreshIcon: {
-    color: colors.textPrimary,
-    fontSize: 22,
-    lineHeight: 22,
+  refreshHover: {
+    backgroundColor: colors.accent,
+    borderColor: colors.accent,
   },
 
   clearButton: {
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
+    borderRadius: BUTTON_RADIUS,
     marginLeft: 12,
-    backgroundColor: colors.danger,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderRadius: 20,
+    backgroundColor: 'transparent',
+    borderWidth: 1,
+    borderColor: colors.danger,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clearButtonText: {
-    color: '#fff',
-    fontWeight: '700',
+  clearHover: {
+    backgroundColor: colors.danger,
+    borderColor: colors.danger,
   },
 
   controlPressed: {

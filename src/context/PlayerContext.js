@@ -20,7 +20,7 @@ export function PlayerProvider({ children }) {
   const [currentTrack, setCurrentTrack] = useState(null);
   const [queue, setQueue] = useState([]);
   const [queueIndex, setQueueIndex] = useState(0);
-  const [originalQueue, setOriginalQueue] = useState([]); // Store original order
+  const [originalQueue, setOriginalQueue] = useState([]);
   const [isShuffled, setIsShuffled] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
 
@@ -113,7 +113,6 @@ export function PlayerProvider({ children }) {
     if (!maybePath) return null;
     if (maybePath.startsWith('http://') || maybePath.startsWith('https://')) return maybePath;
     const base = (api && api.defaults && api.defaults.baseURL) ? api.defaults.baseURL.replace(/\/$/, '') : '';
-    // ensure leading slash
     const path = maybePath.startsWith('/') ? maybePath : `/${maybePath}`;
     return base ? `${base}${path}` : path;
   };

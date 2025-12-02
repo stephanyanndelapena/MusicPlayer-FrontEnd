@@ -120,6 +120,38 @@ function TrackRow({ item, index, onPlay, onAddToPlaylist }) {
   );
 }
 
+function OutlinedButton({ title, onPress, style, textStyle, color = colors.accent, accessibilityLabel }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => {
+        const filled = pressed || hovered;
+        return [
+          styles.outlinedButton,
+          { borderColor: color },
+          filled ? { backgroundColor: color } : { backgroundColor: 'transparent' },
+          style,
+        ];
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || title}
+    >
+      {({ pressed }) => {
+        const filled = pressed || hovered;
+        return (
+          <Text style={[styles.outlinedButtonText, textStyle, filled ? styles.outlinedButtonTextFilled : null]}>
+            {title}
+          </Text>
+        );
+      }}
+    </Pressable>
+  );
+}
+
 export default function AllTracksScreen() {
   const navigation = useNavigation();
 
@@ -375,12 +407,7 @@ export default function AllTracksScreen() {
             )}
 
             <View style={{ marginTop: 12 }}>
-              <TouchableOpacity
-                onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }}
-                style={[styles.outlinedButton, { borderColor: colors.accent }]}
-              >
-                <Text style={[styles.outlinedButtonText, { color: colors.accent }]}>Cancel</Text>
-              </TouchableOpacity>
+              <OutlinedButton title="Cancel" onPress={() => { setPlaylistModalVisible(false); setSelectedTrackToAdd(null); }} color={colors.accent} />
             </View>
           </View>
         </View>

@@ -2,6 +2,79 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Image, Pressable, FlatList, ActivityIndicator } from 'react-native';
 import { getMostPlayed, getAllPlayCounts, clearPlayCounts } from '../utils/playCounts';
 import styles, { colors } from './MostPlayedScreen.styles';
+import { SvgXml } from 'react-native-svg';
+
+const BOOTSTRAP_ICONS_BASE = 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/icons';
+const ARROW_CLOCKWISE = `${BOOTSTRAP_ICONS_BASE}/arrow-clockwise.svg`;
+const TRASH3_FILL = `${BOOTSTRAP_ICONS_BASE}/trash3-fill.svg`;
+
+const svgCache = {};
+function RemoteSvgIcon({ uri, color = '#fff', width = 16, height = 16, style }) {
+  const [svgText, setSvgText] = useState(null);
+
+  React.useEffect(() => {
+    let mounted = true;
+    if (svgCache[uri]) {
+      setSvgText(svgCache[uri]);
+      return;
+    }
+    fetch(uri)
+      .then((res) => res.text())
+      .then((text) => {
+        if (!mounted) return;
+        svgCache[uri] = text;
+        setSvgText(text);
+      })
+      .catch((err) => {
+        console.warn('Failed to load SVG', uri, err);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [uri]);
+
+  if (!svgText) return <View style={[{ width, height }, style]} />;
+
+  const colored = svgText
+    .replace(/fill="[^"]*"/gi, `fill="${color}"`)
+    .replace(/stroke="[^"]*"/gi, `stroke="${color}"`)
+    .replace(/fill='[^']*'/gi, `fill="${color}"`)
+    .replace(/stroke='[^']*'/gi, `stroke="${color}"`);
+
+  return <SvgXml xml={colored} width={width} height={height} style={style} />;
+}
+
+function IconButton({
+  uri,
+  onPress,
+  size = 18,
+  baseStyle,
+  hoverStyle,
+  iconColor = colors.textPrimary,
+  hoverIconColor = colors.textPrimary,
+  accessibilityLabel,
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => {
+        const active = pressed || hovered;
+        return [baseStyle, active ? hoverStyle : null];
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+    >
+      {({ pressed }) => {
+        const active = pressed || hovered;
+        return <RemoteSvgIcon uri={uri} color={active ? hoverIconColor : iconColor} width={size} height={size} />;
+      }}
+    </Pressable>
+  );
+}
 
 export default function MostPlayedScreen({ navigation }) {
   const [top, setTop] = useState(null);
@@ -9,13 +82,28 @@ export default function MostPlayedScreen({ navigation }) {
   const [loading, setLoading] = useState(true);
   const [hoveredTrackId, setHoveredTrackId] = useState(null);
 
+  const sameTrack = (a, b) => {
+    if (!a || !b) return false;
+    if (a.id != null && b.id != null) return String(a.id) === String(b.id);
+    const ta = (a.title || a.name || '').trim().toLowerCase();
+    const tb = (b.title || b.name || '').trim().toLowerCase();
+    const aa = (a.artist || a.author || '').trim().toLowerCase();
+    const ab = (b.artist || b.author || '').trim().toLowerCase();
+    return ta && ta === tb && aa && aa === ab;
+  };
+
   const load = async () => {
     setLoading(true);
     try {
       const t = await getMostPlayed();
-      const a = await getAllPlayCounts();
+      let a = await getAllPlayCounts();
+
+      if (t) {
+        a = (a || []).filter((item) => !sameTrack(item, t));
+      }
+
       setTop(t);
-      setAll(a);
+      setAll(a || []);
     } catch (err) {
       console.warn('MostPlayed load error', err);
     } finally {
@@ -54,20 +142,31 @@ export default function MostPlayedScreen({ navigation }) {
         <Text style={styles.message}>No plays recorded yet.</Text>
         <View style={styles.spacer12} />
         <View style={styles.centeredControls}>
-          <Pressable onPress={load} style={({ pressed }) => [styles.refreshButton, pressed && styles.controlPressed]} accessibilityLabel="Refresh">
-            <Text style={styles.refreshIcon}>⟳</Text>
-          </Pressable>
+          <IconButton
+            uri={ARROW_CLOCKWISE}
+            onPress={load}
+            baseStyle={styles.refreshButton}
+            hoverStyle={styles.refreshHover}
+            iconColor={colors.textPrimary}
+            hoverIconColor={colors.textPrimary}
+            size={20}
+            accessibilityLabel="Refresh"
+          />
 
-          <Pressable
+          
+          <IconButton
+            uri={TRASH3_FILL}
             onPress={async () => {
               await clearPlayCounts();
               await load();
             }}
-            style={({ pressed }) => [styles.clearButton, pressed && styles.controlPressed]}
-            accessibilityLabel="Clear"
-          >
-            <Text style={styles.clearButtonText}>Clear</Text>
-          </Pressable>
+            baseStyle={styles.clearButton}
+            hoverStyle={styles.clearHover}
+            iconColor={colors.danger}
+            hoverIconColor={'#fff'}
+            size={20}
+            accessibilityLabel="Clear play counts"
+          />
         </View>
       </View>
     );
@@ -107,10 +206,7 @@ export default function MostPlayedScreen({ navigation }) {
         onHoverIn={() => setHoveredTrackId(id)}
         onHoverOut={() => setHoveredTrackId(null)}
         onPress={() => {}}
-        style={({ pressed }) => [
-          styles.row,
-          (isHovered || pressed) ? styles.rowHover : null,
-        ]}
+        style={[styles.row, isHovered ? styles.rowHover : null]}
         accessibilityRole="button"
       >
         <RemoteImage uri={item.artwork} style={styles.thumb} placeholderStyle={styles.thumbPlaceholder} />
@@ -134,20 +230,30 @@ export default function MostPlayedScreen({ navigation }) {
         <Text style={styles.topCount}>Plays: {top.count || 0}</Text>
 
         <View style={styles.topCardControls} pointerEvents="box-none">
-          <Pressable onPress={load} style={({ pressed }) => [styles.topIconButton, pressed && styles.controlPressed]} accessibilityLabel="Refresh">
-            <Text style={styles.topIcon}>⟳</Text>
-          </Pressable>
+          <IconButton
+            uri={ARROW_CLOCKWISE}
+            onPress={load}
+            baseStyle={styles.topIconButton}
+            hoverStyle={styles.topIconHover}
+            iconColor={colors.textPrimary}
+            hoverIconColor={colors.textPrimary}
+            size={20}
+            accessibilityLabel="Refresh"
+          />
 
-          <Pressable
+          <IconButton
+            uri={TRASH3_FILL}
             onPress={async () => {
               await clearPlayCounts();
               await load();
             }}
-            style={({ pressed }) => [styles.topClearButton, pressed && styles.controlPressed]}
-            accessibilityLabel="Clear"
-          >
-            <Text style={styles.topClearText}>Clear</Text>
-          </Pressable>
+            baseStyle={styles.topClearButton}
+            hoverStyle={styles.topClearHover}
+            iconColor={colors.danger}
+            hoverIconColor={'#fff'}
+            size={20}
+            accessibilityLabel="Clear play counts"
+          />
         </View>
       </View>
 

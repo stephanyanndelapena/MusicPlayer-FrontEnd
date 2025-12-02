@@ -46,10 +46,6 @@ export default StyleSheet.create({
     paddingHorizontal: 16,
     paddingBottom: 12,
   },
-  headerButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
 
   headerButtons: {
     flexDirection: 'row',
@@ -60,6 +56,30 @@ export default StyleSheet.create({
     marginLeft: 10,
     borderRadius: 6,
     overflow: 'hidden',
+  },
+
+  outlinedButton: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 6,
+    borderWidth: 1.5,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 84,
+  },
+  outlinedButtonText: {
+    fontSize: 14,
+    color: colors.accent,
+    fontWeight: '600',
+  },
+  outlinedButtonTextFilled: {
+    color: colors.textPrimary,
+  },
+
+  iconOutlined: {
+    minWidth: 84,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
   },
 
   listContent: {
@@ -208,6 +228,18 @@ export default StyleSheet.create({
     marginBottom: 12,
     color: colors.textPrimary,
   },
+
+  modalOption: {
+    paddingVertical: 12,
+    paddingHorizontal: 8,
+    backgroundColor: 'transparent',
+    borderRadius: 8,
+  },
+  modalOptionText: {
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+
   playlistOption: {
     paddingVertical: 12,
     paddingHorizontal: 8,
@@ -220,23 +252,5 @@ export default StyleSheet.create({
   playlistOptionCount: {
     color: colors.textSecondary,
     fontSize: 14,
-  },
-
-  outlinedButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-    minWidth: 84,
-  },
-  outlinedButtonText: {
-    fontSize: 14,
-    color: colors.accent,
-    fontWeight: '600',
-  },
-  outlinedButtonTextFilled: {
-    color: colors.textPrimary,
   },
 });

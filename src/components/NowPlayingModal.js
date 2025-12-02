@@ -99,7 +99,6 @@ export default function NowPlayingModal() {
   const repeatColor = useMemo(() => (isRepeat ? activeColor : inactiveColor), [isRepeat]);
   const transportColor = inactiveColor;
 
-  // Volume UI state
   const [isVolumeOpen, setIsVolumeOpen] = useState(false);
   const volLayoutRef = useRef(null);
   const volPanResponder = useRef(null);

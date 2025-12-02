@@ -196,15 +196,45 @@ function OutlinedButton({ title, onPress, style, textStyle, color = colors.accen
   );
 }
 
+function IconOutlinedButton({ uri, onPress, color = colors.accent, accessibilityLabel }) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      style={({ pressed }) => {
+        const filled = pressed || hovered;
+        return [
+          styles.outlinedButton,
+          { borderColor: color },
+          filled ? { backgroundColor: color } : { backgroundColor: 'transparent' },
+          styles.iconOutlined,
+        ];
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel || 'Icon button'}
+    >
+      {({ pressed }) => {
+        const filled = pressed || hovered;
+        return <RemoteSvgIcon uri={uri} color={filled ? colors.textPrimary : color} width={20} height={20} />;
+      }}
+    </Pressable>
+  );
+}
+
 export default function PlaylistsScreen({ navigation }) {
   const [playlists, setPlaylists] = useState([]);
   const [tracks, setTracks] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [trackFilter, setTrackFilter] = useState('recent'); // 'recent' | 'title' | 'artist'
+  const [trackFilter, setTrackFilter] = useState('recent');
   const [loading, setLoading] = useState(false);
   const [playlistModalVisible, setPlaylistModalVisible] = useState(false);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
   const [selectedTrackToAdd, setSelectedTrackToAdd] = useState(null);
+
+  const [addModalVisible, setAddModalVisible] = useState(false);
 
   useEffect(() => {
     navigation.setOptions({
@@ -323,21 +353,29 @@ export default function PlaylistsScreen({ navigation }) {
     [openAddToPlaylistModal, filteredTracks]
   );
 
-  const TracksFooter = () => (
-    <View style={{ paddingVertical: 12 }}>
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Recent tracks</Text>
-      </View>
+  const TracksFooter = () => {
+    const recentTracks = filteredTracks.slice(0, 5);
+    return (
+      <View style={{ paddingVertical: 12 }}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Recent tracks</Text>
+        </View>
 
-      {filteredTracks.length === 0 ? (
-        <Text style={styles.emptyText}>
-          {queryLower ? 'No songs match your search.' : 'No songs yet. Use "Add Song" (header) to upload music.'}
-        </Text>
-      ) : (
-        <FlatList data={filteredTracks} keyExtractor={(t) => String(t.id)} renderItem={renderTrackItem} ItemSeparatorComponent={() => <View style={styles.separator} />} />
-      )}
-    </View>
-  );
+        {filteredTracks.length === 0 ? (
+          <Text style={styles.emptyText}>
+            {queryLower ? 'No songs match your search.' : 'No songs yet. Use "Add Song" (header) to upload music.'}
+          </Text>
+        ) : (
+          <FlatList
+            data={recentTracks}
+            keyExtractor={(t) => String(t.id)}
+            renderItem={renderTrackItem}
+            ItemSeparatorComponent={() => <View style={styles.separator} />}
+          />
+        )}
+      </View>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -346,16 +384,14 @@ export default function PlaylistsScreen({ navigation }) {
           <Text style={styles.headerTitle}>Your Library</Text>
           <Text style={styles.headerSubtitle}>Playlists</Text>
         </View>
-      </View>
-      
-      <View style={styles.headerButtonsContainer}>
+
         <View style={styles.headerButtons}>
           <View style={styles.smallButton}>
-            <OutlinedButton title="Create" onPress={() => navigation.navigate('PlaylistForm')} color={colors.accent} />
-          </View>
-
-          <View style={styles.smallButton}>
-            <OutlinedButton title="Add Song" onPress={() => navigation.navigate('TrackForm')} color={colors.accent} />
+            <IconOutlinedButton
+              uri={`${BOOTSTRAP_ICONS_BASE}/plus.svg`}
+              onPress={() => setAddModalVisible(true)}
+              accessibilityLabel="Add"
+            />
           </View>
 
           <View style={styles.smallButton}>
@@ -367,6 +403,40 @@ export default function PlaylistsScreen({ navigation }) {
           </View>
         </View>
       </View>
+
+      <Modal visible={addModalVisible} animationType="slide" transparent={true} onRequestClose={() => setAddModalVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Create Playlist or Add a Song</Text>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => {
+                setAddModalVisible(false);
+                navigation.navigate('PlaylistForm');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalOptionText}>Create Playlist</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={() => {
+                setAddModalVisible(false);
+                navigation.navigate('TrackForm');
+              }}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.modalOptionText}>Add a Song</Text>
+            </TouchableOpacity>
+
+            <View style={{ marginTop: 12 }}>
+              <OutlinedButton title="Cancel" onPress={() => setAddModalVisible(false)} color={colors.accent} />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <View style={{ paddingHorizontal: 12, paddingVertical: 8 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#222', borderRadius: 8, paddingHorizontal: 8 }}>

@@ -1,23 +1,18 @@
-// src/utils/playCounts.js
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const KEY = 'play_counts_v1';
 
-// Normalizes artwork urls so they always point to the Django server
 function normalizeArtworkUrl(url) {
   if (!url) return null;
 
-  // If already correct, return
   if (url.startsWith('http://127.0.0.1:8000') || url.startsWith('https://127.0.0.1:8000')) {
     return url;
   }
 
-  // Fix common wrong localhost:8081 or :8080 cases
-  if (/https?:\/\/(127\.0\.0\.1|localhost):\d+\//.test(url)) {
-    return url.replace(/(127\.0\.0\.1|localhost):\d+/, '127.0.0.1:8000');
+  if (/https?:\/\/(127\\.0\\.0\\.1|localhost):\d+\//.test(url)) {
+    return url.replace(/(127\\.0\\.0\\.1|localhost):\d+/, '127.0.0.1:8000');
   }
 
-  // If relative path like /media/artworks/..., prefix with backend base
   if (url.startsWith('/')) {
     return `http://127.0.0.1:8000${url}`;
   }

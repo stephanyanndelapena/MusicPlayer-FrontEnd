@@ -9,7 +9,6 @@ export const colors = {
   placeholder: '#7a7a7a',
   accent: '#1DB954',
   mutedBorder: '#2a2a2a',
-  danger: '#E53935',
 };
 
 export default StyleSheet.create({
@@ -100,8 +99,8 @@ export default StyleSheet.create({
   },
 
   cancelButtonHover: {
-    backgroundColor: colors.danger,
-    borderColor: colors.danger,
+    backgroundColor: 'transparent',
+    borderColor: colors.accent,
   },
 
   cancelButtonText: {
@@ -111,6 +110,6 @@ export default StyleSheet.create({
   },
 
   cancelButtonTextHover: {
-    color: colors.textPrimary,
+    color: colors.textSecondary,
   },
 });

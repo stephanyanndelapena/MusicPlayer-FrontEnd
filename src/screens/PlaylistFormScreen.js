@@ -104,10 +104,7 @@ export default function PlaylistFormScreen({ route, navigation }) {
             );
           } else {
             return (
-              <Text style={[
-                styles.cancelButtonText,
-                !disabled && active ? styles.cancelButtonTextHover : null,
-              ]}>
+              <Text style={styles.cancelButtonText}>
                 {title}
               </Text>
             );
