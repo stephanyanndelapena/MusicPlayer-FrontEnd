@@ -39,10 +39,23 @@ export default StyleSheet.create({
     marginTop: 2,
   },
 
+  headerButtonsContainer: {
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: '#161616',
+    paddingHorizontal: 16,
+    paddingBottom: 12,
+  },
   headerButtons: {
     flexDirection: 'row',
     alignItems: 'center',
   },
+
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+
   smallButton: {
     marginLeft: 10,
     borderRadius: 6,

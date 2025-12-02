@@ -346,7 +346,9 @@ export default function PlaylistsScreen({ navigation }) {
           <Text style={styles.headerTitle}>Your Library</Text>
           <Text style={styles.headerSubtitle}>Playlists</Text>
         </View>
-
+      </View>
+      
+      <View style={styles.headerButtonsContainer}>
         <View style={styles.headerButtons}>
           <View style={styles.smallButton}>
             <OutlinedButton title="Create" onPress={() => navigation.navigate('PlaylistForm')} color={colors.accent} />
@@ -386,35 +388,6 @@ export default function PlaylistsScreen({ navigation }) {
           ) : null}
         </View>
       </View>
-
-      {/* <View style={{ paddingHorizontal: 12, paddingBottom: 8, flexDirection: 'row', alignItems: 'center' }}>
-        {[
-          { key: 'recent', label: 'Recently added' },
-          { key: 'title', label: 'Title A–Z' },
-          { key: 'artist', label: 'Artist A–Z' },
-        ].map((opt) => {
-          const selected = trackFilter === opt.key;
-          return (
-            <Pressable
-              key={opt.key}
-              onPress={() => setTrackFilter(opt.key)}
-              style={({ pressed }) => [
-                {
-                  paddingVertical: 6,
-                  paddingHorizontal: 10,
-                  borderRadius: 6,
-                  marginRight: 8,
-                  backgroundColor: selected ? colors.accent : pressed ? '#333' : 'transparent',
-                },
-              ]}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
-            >
-              <Text style={{ color: selected ? '#000' : '#ccc', fontSize: 13 }}>{opt.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View> */}
 
       <FlatList
         data={filteredPlaylists}
