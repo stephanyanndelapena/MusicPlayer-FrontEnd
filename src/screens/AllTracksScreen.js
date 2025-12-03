@@ -79,7 +79,7 @@ const Artwork = React.memo(function Artwork({ artwork, imageStyle, placeholderSt
   return <Image source={source} style={imageStyle || styles.trackThumb} />;
 });
 
-function TrackRow({ item, index, onPlay, onAddToPlaylist, onEdit }) {
+function TrackRow({ item, index, onPlay, onAddToPlaylist, onEdit, isCurrent }) {
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -87,7 +87,11 @@ function TrackRow({ item, index, onPlay, onAddToPlaylist, onEdit }) {
       onPress={onPlay}
       onHoverIn={() => setHovered(true)}
       onHoverOut={() => setHovered(false)}
-      style={({ pressed }) => [styles.trackRow, hovered || pressed ? styles.trackRowHover : null]}
+      style={({ pressed }) => [
+        styles.trackRow,
+        isCurrent ? styles.trackRowActive : null,
+        hovered || pressed ? styles.trackRowHover : null,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={`Play ${item.title || item.name || 'track'}`}
     >
@@ -183,6 +187,8 @@ export default function AllTracksScreen() {
 
   const player = usePlayer ? usePlayer() : null;
   const playFn = player && typeof player.play === 'function' ? player.play : null;
+  const currentTrack = player?.currentTrack;
+  const isPlaying = player?.isPlaying;
 
   const [tracks, setTracks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -575,15 +581,19 @@ export default function AllTracksScreen() {
     closeEditModal,
   ]);
 
-  const renderItem = ({ item, index }) => (
-    <TrackRow
-      item={item}
-      index={index}
-      onPlay={() => handlePlay(item, index)}
-      onAddToPlaylist={openAddToPlaylistModal}
-      onEdit={openEditModal}
-    />
-  );
+  const renderItem = ({ item, index }) => {
+    const isCurrent = currentTrack && ((currentTrack.id ?? currentTrack._id) === (item.id ?? item._id)) && isPlaying;
+    return (
+      <TrackRow
+        item={item}
+        index={index}
+        onPlay={() => handlePlay(item, index)}
+        onAddToPlaylist={openAddToPlaylistModal}
+        onEdit={openEditModal}
+        isCurrent={isCurrent}
+      />
+    );
+  };
 
   if (loading) {
     return (

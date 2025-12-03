@@ -76,11 +76,59 @@ function IconButton({
   );
 }
 
+function RemoteImage({ uri, style, placeholderStyle, resizeMode = 'cover' }) {
+  const [errored, setErrored] = useState(false);
+  const safeUri = uri || null;
+
+  React.useEffect(() => {
+    setErrored(false);
+  }, [uri]);
+
+  if (!safeUri || errored) {
+    return <View style={[styles.thumbPlaceholder, placeholderStyle]} />;
+  }
+
+  return (
+    <Image
+      source={{ uri: safeUri }}
+      style={style}
+      resizeMode={resizeMode}
+      onError={(e) => {
+        console.warn('[RemoteImage] onError', e.nativeEvent, safeUri);
+        setErrored(true);
+      }}
+    />
+  );
+}
+
+const TrackRow = React.memo(function TrackRow({ item }) {
+  const [hovered, setHovered] = useState(false);
+  const id = item?.id ?? String(item?.title ?? Math.random());
+  return (
+    <Pressable
+      onHoverIn={() => setHovered(true)}
+      onHoverOut={() => setHovered(false)}
+      onPress={() => { }}
+      style={[styles.row, hovered ? styles.rowHover : null]}
+      accessibilityRole="button"
+      key={id}
+    >
+      <RemoteImage uri={item.artwork} style={styles.thumb} placeholderStyle={styles.thumbPlaceholder} />
+      <View style={styles.rowText}>
+        <Text style={styles.title}>{item.title || '(unknown)'}</Text>
+        <Text style={styles.subtitle}>{item.artist || ''}</Text>
+        <Text style={styles.count}>Plays: {item.count || 0}</Text>
+      </View>
+    </Pressable>
+  );
+}, (prev, next) => {
+  return prev.item === next.item;
+});
+
 export default function MostPlayedScreen({ navigation }) {
   const [top, setTop] = useState(null);
   const [all, setAll] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [hoveredTrackId, setHoveredTrackId] = useState(null);
 
   const sameTrack = (a, b) => {
     if (!a || !b) return false;
@@ -152,8 +200,6 @@ export default function MostPlayedScreen({ navigation }) {
             size={20}
             accessibilityLabel="Refresh"
           />
-
-          
           <IconButton
             uri={TRASH3_FILL}
             onPress={async () => {
@@ -171,53 +217,6 @@ export default function MostPlayedScreen({ navigation }) {
       </View>
     );
   }
-
-  function RemoteImage({ uri, style, placeholderStyle, resizeMode = 'cover' }) {
-    const [errored, setErrored] = useState(false);
-    const safeUri = uri || null;
-
-    React.useEffect(() => {
-      setErrored(false);
-    }, [uri]);
-
-    if (!safeUri || errored) {
-      return <View style={[styles.thumbPlaceholder, placeholderStyle]} />;
-    }
-
-    return (
-      <Image
-        source={{ uri: safeUri }}
-        style={style}
-        resizeMode={resizeMode}
-        onError={(e) => {
-          console.warn('[RemoteImage] onError', e.nativeEvent, safeUri);
-          setErrored(true);
-        }}
-      />
-    );
-  }
-
-  const renderItem = ({ item }) => {
-    const id = item?.id ?? String(item?.title ?? Math.random());
-    const isHovered = hoveredTrackId === id;
-
-    return (
-      <Pressable
-        onHoverIn={() => setHoveredTrackId(id)}
-        onHoverOut={() => setHoveredTrackId(null)}
-        onPress={() => {}}
-        style={[styles.row, isHovered ? styles.rowHover : null]}
-        accessibilityRole="button"
-      >
-        <RemoteImage uri={item.artwork} style={styles.thumb} placeholderStyle={styles.thumbPlaceholder} />
-        <View style={styles.rowText}>
-          <Text style={styles.title}>{item.title || '(unknown)'}</Text>
-          <Text style={styles.subtitle}>{item.artist || ''}</Text>
-          <Text style={styles.count}>Plays: {item.count || 0}</Text>
-        </View>
-      </Pressable>
-    );
-  };
 
   return (
     <View style={styles.container}>
@@ -240,7 +239,6 @@ export default function MostPlayedScreen({ navigation }) {
             size={20}
             accessibilityLabel="Refresh"
           />
-
           <IconButton
             uri={TRASH3_FILL}
             onPress={async () => {
@@ -263,7 +261,7 @@ export default function MostPlayedScreen({ navigation }) {
       <FlatList
         data={all}
         keyExtractor={(i, idx) => String(i?.id ?? idx)}
-        renderItem={renderItem}
+        renderItem={({ item }) => <TrackRow item={item} />}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         contentContainerStyle={styles.listContent}
       />
