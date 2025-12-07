@@ -1,7 +1,7 @@
 I. Project Overview
-This repository contains the frontend component of Stopify, a mobile application developed using React Native and published through Snack Expo.
-The frontend communicates with a Django backend API to provide users with an interactive interface for browsing, uploading, and organizing music tracks into playlists.
-The application demonstrates key concepts in mobile UI design, RESTful API integration, and cross‑platform development.
+- This repository contains the frontend component of Stopify, a mobile application developed using React Native and published through Snack Expo.
+- The frontend communicates with a Django backend API to provide users with an interactive interface for browsing, uploading, and organizing music tracks into playlists.
+- The application demonstrates key concepts in mobile UI design, RESTful API integration, and cross‑platform development.
 
 II. Key Features
 - Fetch, display, and manage Tracks and Playlists from hosted backend API
